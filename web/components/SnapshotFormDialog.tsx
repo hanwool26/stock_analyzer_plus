@@ -150,6 +150,11 @@ interface SnapshotFormDialogProps {
     memo?: string | null;
     items: InitialSnapshotItem[];
   };
+  /** 추가 모드에서 최근 스냅샷을 템플릿으로 미리 채울 때 전달 (날짜는 오늘로 유지됩니다). */
+  template?: {
+    memo?: string | null;
+    items: InitialSnapshotItem[];
+  };
 }
 
 export default function SnapshotFormDialog({
@@ -157,16 +162,18 @@ export default function SnapshotFormDialog({
   assetCategories,
   liabilityCategories,
   initial,
+  template,
 }: SnapshotFormDialogProps) {
   const isEdit = Boolean(initial);
+  const source = initial ?? template;
   const [open, setOpen] = useState(false);
   const [date, setDate] = useState(initial?.date ?? todayStr());
-  const [memo, setMemo] = useState(initial?.memo ?? "");
+  const [memo, setMemo] = useState(source?.memo ?? "");
   const [assetRows, setAssetRows] = useState<Row[]>(
-    initial ? toRows(initial.items, "ASSET") : [emptyRow()]
+    source ? toRows(source.items, "ASSET") : [emptyRow()]
   );
   const [liabilityRows, setLiabilityRows] = useState<Row[]>(
-    initial ? toRows(initial.items, "LIABILITY") : [emptyRow()]
+    source ? toRows(source.items, "LIABILITY") : [emptyRow()]
   );
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -176,9 +183,18 @@ export default function SnapshotFormDialog({
 
   function reset() {
     setDate(initial?.date ?? todayStr());
-    setMemo(initial?.memo ?? "");
-    setAssetRows(initial ? toRows(initial.items, "ASSET") : [emptyRow()]);
-    setLiabilityRows(initial ? toRows(initial.items, "LIABILITY") : [emptyRow()]);
+    setMemo(source?.memo ?? "");
+    setAssetRows(source ? toRows(source.items, "ASSET") : [emptyRow()]);
+    setLiabilityRows(source ? toRows(source.items, "LIABILITY") : [emptyRow()]);
+    setError(null);
+  }
+
+  /** 템플릿을 무시하고 완전히 빈 입력으로 초기화 (신규 생성) */
+  function resetBlank() {
+    setDate(todayStr());
+    setMemo("");
+    setAssetRows([emptyRow()]);
+    setLiabilityRows([emptyRow()]);
     setError(null);
   }
 
@@ -215,7 +231,6 @@ export default function SnapshotFormDialog({
     startTransition(async () => {
       try {
         await saveSnapshot({ memberId, date, memo: memo.trim() || undefined, items });
-        if (!isEdit) reset();
         setOpen(false);
       } catch (err) {
         setError(err instanceof Error ? err.message : "저장에 실패했습니다.");
@@ -250,6 +265,8 @@ export default function SnapshotFormDialog({
             <p className="text-xs text-slate-400 mb-4">
               {isEdit
                 ? "날짜는 수정할 수 없습니다. 날짜를 바꾸려면 삭제 후 새로 추가해주세요."
+                : template
+                ? "최근 스냅샷 내용을 불러왔습니다. 변경된 부분만 수정해주세요. (같은 날짜로 저장하면 기존 항목을 덮어씁니다)"
                 : "같은 날짜로 다시 저장하면 해당 날짜의 기존 항목을 덮어씁니다."}
             </p>
             <form onSubmit={handleSubmit} className="space-y-5">
@@ -291,6 +308,15 @@ export default function SnapshotFormDialog({
               {error && <p className="text-xs text-red-600">{error}</p>}
 
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                {!isEdit && template && (
+                  <button
+                    type="button"
+                    onClick={resetBlank}
+                    className="mr-auto rounded-md px-3 py-1.5 text-sm text-slate-500 hover:bg-slate-100"
+                  >
+                    신규 생성
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => {

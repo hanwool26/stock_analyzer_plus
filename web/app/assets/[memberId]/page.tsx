@@ -25,6 +25,8 @@ export default async function MemberAssetsPage({
 
   if (!member) notFound();
 
+  // snapshots는 date desc로 정렬되어 있으므로 첫 번째가 최신 스냅샷입니다.
+  const latestSnapshot = member.snapshots[0];
   const allItems = member.snapshots.flatMap((s) => s.items);
   const assetCategories = Array.from(
     new Set(allItems.filter((i) => i.type === "ASSET").map((i) => i.category))
@@ -51,9 +53,24 @@ export default async function MemberAssetsPage({
             confirmMessage={`${member.name} 구성원을 삭제할까요? 등록된 모든 자산 스냅샷이 함께 삭제되며 되돌릴 수 없습니다.`}
           />
           <SnapshotFormDialog
+            key={latestSnapshot?.id ?? "new"}
             memberId={member.id}
             assetCategories={assetCategories}
             liabilityCategories={liabilityCategories}
+            template={
+              latestSnapshot
+                ? {
+                    memo: latestSnapshot.memo,
+                    items: latestSnapshot.items.map((i) => ({
+                      type: i.type as "ASSET" | "LIABILITY",
+                      category: i.category,
+                      name: i.name,
+                      amount: i.amount,
+                      note: i.note,
+                    })),
+                  }
+                : undefined
+            }
           />
         </div>
       </div>
