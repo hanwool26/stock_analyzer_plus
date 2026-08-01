@@ -4,6 +4,7 @@ import { formatDateOnlyISO, formatDateOnlyKorean } from "@/lib/date";
 import { deleteSnapshot } from "@/app/assets/actions";
 import ConfirmDeleteButton from "./ConfirmDeleteButton";
 import SnapshotFormDialog from "./SnapshotFormDialog";
+import CategoryPieChart from "./CategoryPieChart";
 
 function CategoryTable({ groups }: { groups: { category: string; items: FinanceItemLike[]; subtotal: number }[] }) {
   if (groups.length === 0) {
@@ -84,6 +85,17 @@ export default function SnapshotBreakdown({
             action={deleteSnapshot.bind(null, snapshot.id)}
             confirmMessage={`${formatDateOnlyKorean(snapshot.date)} 스냅샷을 삭제할까요? 되돌릴 수 없습니다.`}
           />
+        </div>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 mb-5">
+        <div>
+          <h4 className="text-sm font-bold text-slate-900 mb-2">자산 구성</h4>
+          <CategoryPieChart title="자산" groups={assetGroups} />
+        </div>
+        <div>
+          <h4 className="text-sm font-bold text-slate-900 mb-2">부채 구성</h4>
+          <CategoryPieChart title="부채" groups={liabilityGroups} />
         </div>
       </div>
 

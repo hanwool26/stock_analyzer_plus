@@ -18,7 +18,7 @@ export default function Nav() {
     <header className="border-b border-slate-200 bg-white/80 backdrop-blur sticky top-0 z-10">
       <div className="mx-auto max-w-5xl px-4 sm:px-6 h-14 flex items-center gap-4 sm:gap-8">
         <Link href="/" className="shrink-0 whitespace-nowrap font-bold text-slate-900 tracking-tight">
-          Stock Analyzer <span className="text-blue-600">Plus</span>
+          Family Asset <span className="text-blue-600">Manager</span>
         </Link>
         <nav className="flex gap-4 sm:gap-6 text-sm font-medium overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {NAV_ITEMS.map((item) => {

@@ -4,7 +4,7 @@ import type { NextRequest } from "next/server";
 function unauthorized() {
   return new NextResponse("Authentication required.", {
     status: 401,
-    headers: { "WWW-Authenticate": 'Basic realm="Stock Analyzer Plus"' },
+    headers: { "WWW-Authenticate": 'Basic realm="Family Asset Manager"' },
   });
 }
 

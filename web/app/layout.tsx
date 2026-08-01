@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Stock Analyzer Plus",
+  title: "Family Asset Manager",
   description: "뉴스 기반 AI 주식 분석 + 자산 포트폴리오 관리",
 };
 

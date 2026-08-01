@@ -1,4 +1,4 @@
-# Stock Analyzer Plus
+# Family Asset Manager
 
 뉴스 기반 AI 주식 분석 서비스 [Stock Analyzer](https://stock-analyzer-peach-chi.vercel.app/)를 참고해 만든 **PLUS 버전**입니다. 원본의 종목 추천 리포트 UI에 더해, 가족 단위 자산 관리 기능을 추가하는 것을 목표로 합니다.
 
