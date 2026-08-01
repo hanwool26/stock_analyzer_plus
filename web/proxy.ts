@@ -9,10 +9,9 @@ function unauthorized() {
 }
 
 export function proxy(request: NextRequest) {
-  const user = process.env.BASIC_AUTH_USER;
   const password = process.env.BASIC_AUTH_PASSWORD;
 
-  if (!user || !password) {
+  if (!password) {
     return NextResponse.next();
   }
 
@@ -21,11 +20,11 @@ export function proxy(request: NextRequest) {
     return unauthorized();
   }
 
-  const [receivedUser, receivedPassword] = Buffer.from(authHeader.slice(6), "base64")
+  const [, receivedPassword] = Buffer.from(authHeader.slice(6), "base64")
     .toString("utf-8")
     .split(":");
 
-  if (receivedUser !== user || receivedPassword !== password) {
+  if (receivedPassword !== password) {
     return unauthorized();
   }
 

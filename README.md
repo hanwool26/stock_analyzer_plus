@@ -65,7 +65,7 @@ npm run dev
 
 - 빌드: `npm run build` (배포 시 `prisma migrate deploy`를 먼저 실행) / `npm run start`
 - 린트: `npm run lint`
-- `.env`에 `BASIC_AUTH_USER` / `BASIC_AUTH_PASSWORD`를 둘 다 채우면 앱 전체에 Basic Auth가 걸립니다 (`web/proxy.ts`). 로컬 개발 중엔 보통 비워둡니다.
+- `.env`에 `BASIC_AUTH_PASSWORD`를 채우면 앱 전체에 비밀번호 인증이 걸립니다 (`web/proxy.ts`, 아이디는 무엇을 입력해도 무시되고 비밀번호만 검사합니다). 로컬 개발 중엔 보통 비워둡니다.
 
 ## 배포하기 (Vercel)
 
@@ -78,7 +78,7 @@ npm run dev
 5. **환경변수 등록** (Vercel 프로젝트 → Settings → Environment Variables):
    - `DATABASE_URL` (필수)
    - `ANTHROPIC_API_KEY` (선택 — 앱 내 설정 다이얼로그에서 대신 등록해도 됨)
-   - `BASIC_AUTH_USER`, `BASIC_AUTH_PASSWORD` (외부에 공개되는 URL이므로 강력 권장)
+   - `BASIC_AUTH_PASSWORD` (외부에 공개되는 URL이므로 강력 권장)
 6. **Deploy**. 완료되면 `https://<project>.vercel.app` 주소로 PC/모바일 어디서나 접속할 수 있습니다.
 7. 이후 `main` 브랜치에 push할 때마다 Vercel이 자동으로 `prisma migrate deploy && next build`를 실행하며 재배포합니다.
 
