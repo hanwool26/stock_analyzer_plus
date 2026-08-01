@@ -1,0 +1,50 @@
+import Link from "next/link";
+import { getLatestReport } from "@/lib/mock-reports";
+import RecommendationCard from "@/components/RecommendationCard";
+import CategoryIssueCard from "@/components/CategoryIssueCard";
+
+export default function HomePage() {
+  const report = getLatestReport();
+  const kr = report.recommendations.filter((r) => r.region === "KR");
+
+  return (
+    <div className="space-y-10">
+      <section>
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <h1 className="text-xl font-bold text-slate-900">오늘의 시장 분석</h1>
+          <Link
+            href={`/reports/${report.date}/${report.hour}`}
+            className="text-sm font-medium text-blue-600 hover:underline"
+          >
+            상세 리포트 &rarr;
+          </Link>
+        </div>
+        <p className="text-xs text-slate-400 mb-3">
+          기준 시점 {report.date} {String(report.hour).padStart(2, "0")}:00 KST
+          &middot; 매일 07:00 / 12:00 / 19:00 (평일) 자동 갱신
+        </p>
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="text-sm text-slate-700 leading-relaxed">{report.marketContext}</p>
+        </div>
+      </section>
+
+      <section>
+        <h2 className="text-base font-bold text-slate-900 mb-3">추천 종목 TOP 5 (국내)</h2>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {kr.map((rec) => (
+            <RecommendationCard key={`${rec.region}-${rec.ticker}`} rec={rec} />
+          ))}
+        </div>
+      </section>
+
+      <section>
+        <h2 className="text-base font-bold text-slate-900 mb-3">카테고리별 이슈</h2>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {report.categorySummaries.map((summary) => (
+            <CategoryIssueCard key={summary.category} summary={summary} />
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}

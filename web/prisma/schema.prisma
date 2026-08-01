@@ -1,0 +1,77 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Holding {
+  id           String        @id @default(cuid())
+  ticker       String
+  name         String
+  region       String // "KR" | "US"
+  quantity     Float
+  avgPrice     Float
+  currency     String // "KRW" | "USD"
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  transactions Transaction[]
+}
+
+model Transaction {
+  id         String   @id @default(cuid())
+  holdingId  String
+  holding    Holding  @relation(fields: [holdingId], references: [id], onDelete: Cascade)
+  type       String // "BUY" | "SELL"
+  quantity   Float
+  price      Float
+  executedAt DateTime
+  memo       String?
+  createdAt  DateTime @default(now())
+}
+
+model PortfolioSnapshot {
+  id         String   @id @default(cuid())
+  date       DateTime @unique
+  totalValue Float
+  totalCost  Float
+}
+
+model FamilyMember {
+  id        String            @id @default(cuid())
+  name      String            @unique
+  order     Int               @default(0)
+  createdAt DateTime          @default(now())
+  snapshots FinanceSnapshot[]
+}
+
+model FinanceSnapshot {
+  id        String        @id @default(cuid())
+  memberId  String
+  member    FamilyMember  @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  date      DateTime
+  memo      String?
+  createdAt DateTime      @default(now())
+  items     FinanceItem[]
+
+  @@unique([memberId, date])
+}
+
+model FinanceItem {
+  id         String          @id @default(cuid())
+  snapshotId String
+  snapshot   FinanceSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  type       String // "ASSET" | "LIABILITY"
+  category   String // 분류 (예: 현금 및 유동자산, 투자자산, 사용자산, 저축, 부채)
+  name       String // 소분류 (예: 월급계좌, 국내주식)
+  amount     Float
+  note       String?
+  order      Int             @default(0)
+}
