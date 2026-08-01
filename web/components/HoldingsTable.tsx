@@ -93,46 +93,48 @@ export default function HoldingsTable({ holdings }: { holdings: Holding[] }) {
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-      <table className="w-full text-sm">
-        <thead className="bg-slate-50 text-xs text-slate-400">
-          <tr className="text-left">
-            <th className="px-4 py-2.5 font-medium">종목</th>
-            <th className="px-4 py-2.5 font-medium text-right">수량</th>
-            <th className="px-4 py-2.5 font-medium text-right">평단가</th>
-            <th className="px-4 py-2.5 font-medium text-right">평가금액</th>
-            <th className="px-4 py-2.5 font-medium"></th>
-            <th className="px-4 py-2.5 font-medium"></th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100">
-          {holdings.map((h) => (
-            <tr key={h.id} className="align-top">
-              <td className="px-4 py-3">
-                <div className="font-semibold text-slate-900">{h.name}</div>
-                <div className="text-xs text-slate-400">
-                  {h.ticker} &middot; {h.region === "KR" ? "국내" : "해외"}
-                </div>
-              </td>
-              <td className="px-4 py-3 text-right tabular-nums">{h.quantity.toLocaleString("ko-KR")}</td>
-              <td className="px-4 py-3 text-right tabular-nums">
-                {formatCurrency(h.avgPrice, h.currency)}
-              </td>
-              <td className="px-4 py-3 text-right tabular-nums font-semibold">
-                {formatCurrency(h.quantity * h.avgPrice, h.currency)}
-              </td>
-              <td className="px-4 py-3">
-                <TransactionRow holding={h} />
-              </td>
-              <td className="px-4 py-3 text-right">
-                <ConfirmDeleteButton
-                  action={deleteHolding.bind(null, h.id)}
-                  confirmMessage={`${h.name}(${h.ticker})을(를) 삭제할까요? 관련 거래 내역도 함께 삭제되며 되돌릴 수 없습니다.`}
-                />
-              </td>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[640px] text-sm">
+          <thead className="bg-slate-50 text-xs text-slate-400">
+            <tr className="text-left">
+              <th className="px-4 py-2.5 font-medium">종목</th>
+              <th className="px-4 py-2.5 font-medium text-right">수량</th>
+              <th className="px-4 py-2.5 font-medium text-right">평단가</th>
+              <th className="px-4 py-2.5 font-medium text-right">평가금액</th>
+              <th className="px-4 py-2.5 font-medium"></th>
+              <th className="px-4 py-2.5 font-medium"></th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {holdings.map((h) => (
+              <tr key={h.id} className="align-top">
+                <td className="px-4 py-3">
+                  <div className="font-semibold text-slate-900">{h.name}</div>
+                  <div className="text-xs text-slate-400">
+                    {h.ticker} &middot; {h.region === "KR" ? "국내" : "해외"}
+                  </div>
+                </td>
+                <td className="px-4 py-3 text-right tabular-nums">{h.quantity.toLocaleString("ko-KR")}</td>
+                <td className="px-4 py-3 text-right tabular-nums">
+                  {formatCurrency(h.avgPrice, h.currency)}
+                </td>
+                <td className="px-4 py-3 text-right tabular-nums font-semibold">
+                  {formatCurrency(h.quantity * h.avgPrice, h.currency)}
+                </td>
+                <td className="px-4 py-3">
+                  <TransactionRow holding={h} />
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <ConfirmDeleteButton
+                    action={deleteHolding.bind(null, h.id)}
+                    confirmMessage={`${h.name}(${h.ticker})을(를) 삭제할까요? 관련 거래 내역도 함께 삭제되며 되돌릴 수 없습니다.`}
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       <p className="px-4 py-2.5 text-[11px] text-slate-400 border-t border-slate-100">
         * 실시간 시세 연동 전으로 평가금액은 매입 평단가 기준 근사치입니다.
       </p>

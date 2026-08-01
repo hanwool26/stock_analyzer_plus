@@ -74,12 +74,15 @@ function RowsEditor({
           + 항목 추가
         </button>
       </div>
-      <div className="space-y-2">
+      <div className="space-y-3 sm:space-y-2">
         {rows.map((row, i) => {
           const isCustom = !presetCategories.includes(row.category);
           return (
-            <div key={i} className="grid grid-cols-12 gap-1.5 items-start">
-              <div className="col-span-4 flex flex-col gap-1">
+            <div
+              key={i}
+              className="grid grid-cols-2 gap-1.5 items-start border-b border-slate-100 pb-3 sm:grid-cols-12 sm:border-0 sm:pb-0"
+            >
+              <div className="col-span-2 flex flex-col gap-1 sm:col-span-4">
                 <select
                   value={isCustom ? CUSTOM_CATEGORY : row.category}
                   onChange={(e) =>
@@ -107,25 +110,25 @@ function RowsEditor({
                 placeholder="항목명 (예: 국내주식)"
                 value={row.name}
                 onChange={(e) => updateRow(i, "name", e.target.value)}
-                className="col-span-3 rounded-md border border-slate-300 px-2 py-1.5 text-xs"
+                className="col-span-2 rounded-md border border-slate-300 px-2 py-1.5 text-xs sm:col-span-3"
               />
               <input
                 type="number"
                 placeholder="금액"
                 value={row.amount}
                 onChange={(e) => updateRow(i, "amount", e.target.value)}
-                className="col-span-3 rounded-md border border-slate-300 px-2 py-1.5 text-xs"
+                className="rounded-md border border-slate-300 px-2 py-1.5 text-xs sm:col-span-3"
               />
               <input
                 placeholder="비고"
                 value={row.note}
                 onChange={(e) => updateRow(i, "note", e.target.value)}
-                className="col-span-1 rounded-md border border-slate-300 px-2 py-1.5 text-xs"
+                className="rounded-md border border-slate-300 px-2 py-1.5 text-xs sm:col-span-1"
               />
               <button
                 type="button"
                 onClick={() => removeRow(i)}
-                className="col-span-1 text-xs text-red-500 hover:underline"
+                className="col-span-2 justify-self-end text-xs text-red-500 hover:underline sm:col-span-1 sm:justify-self-auto"
               >
                 삭제
               </button>
@@ -258,7 +261,7 @@ export default function SnapshotFormDialog({
 
       {open && (
         <div className="fixed inset-0 z-30 flex items-start justify-center overflow-y-auto bg-black/30 px-4 py-8">
-          <div className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-xl">
+          <div className="w-full max-w-2xl rounded-xl bg-white p-4 sm:p-6 shadow-xl">
             <h3 className="text-base font-bold text-slate-900 mb-1">
               자산 스냅샷 {isEdit ? "수정" : "추가"}
             </h3>
@@ -270,7 +273,7 @@ export default function SnapshotFormDialog({
                 : "같은 날짜로 다시 저장하면 해당 날짜의 기존 항목을 덮어씁니다."}
             </p>
             <form onSubmit={handleSubmit} className="space-y-5">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <label className="text-xs text-slate-500">
                   기준일
                   <input
@@ -307,7 +310,7 @@ export default function SnapshotFormDialog({
 
               {error && <p className="text-xs text-red-600">{error}</p>}
 
-              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <div className="flex flex-wrap justify-end gap-2 pt-2 border-t border-slate-100">
                 {!isEdit && template && (
                   <button
                     type="button"

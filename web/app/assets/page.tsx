@@ -56,42 +56,44 @@ export default async function AssetsSummaryPage() {
       <section>
         <h2 className="text-base font-bold text-slate-900 mb-3">구성원별 최신 현황</h2>
         <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-xs text-slate-400">
-              <tr className="text-left">
-                <th className="px-4 py-2.5 font-medium">구성원</th>
-                <th className="px-4 py-2.5 font-medium">기준일</th>
-                <th className="px-4 py-2.5 font-medium text-right">자산</th>
-                <th className="px-4 py-2.5 font-medium text-right">부채</th>
-                <th className="px-4 py-2.5 font-medium text-right">순자산</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {rows.map((r) => (
-                <tr key={r.member.id}>
-                  <td className="px-4 py-3 font-semibold text-slate-900">{r.member.name}</td>
-                  <td className="px-4 py-3 text-slate-500 text-xs">
-                    {r.latestDate ? formatDateOnlyKorean(r.latestDate) : "기록 없음"}
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[560px] text-sm">
+              <thead className="bg-slate-50 text-xs text-slate-400">
+                <tr className="text-left">
+                  <th className="px-4 py-2.5 font-medium">구성원</th>
+                  <th className="px-4 py-2.5 font-medium">기준일</th>
+                  <th className="px-4 py-2.5 font-medium text-right">자산</th>
+                  <th className="px-4 py-2.5 font-medium text-right">부채</th>
+                  <th className="px-4 py-2.5 font-medium text-right">순자산</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {rows.map((r) => (
+                  <tr key={r.member.id}>
+                    <td className="px-4 py-3 font-semibold text-slate-900">{r.member.name}</td>
+                    <td className="px-4 py-3 text-slate-500 text-xs">
+                      {r.latestDate ? formatDateOnlyKorean(r.latestDate) : "기록 없음"}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums">{formatKrw(r.assetTotal)}</td>
+                    <td className="px-4 py-3 text-right tabular-nums">{formatKrw(r.liabilityTotal)}</td>
+                    <td className="px-4 py-3 text-right tabular-nums font-semibold text-blue-600">
+                      {formatKrw(r.netWorth)}
+                    </td>
+                  </tr>
+                ))}
+                <tr className="bg-slate-50 font-bold">
+                  <td className="px-4 py-3" colSpan={2}>
+                    합계
                   </td>
-                  <td className="px-4 py-3 text-right tabular-nums">{formatKrw(r.assetTotal)}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{formatKrw(r.liabilityTotal)}</td>
-                  <td className="px-4 py-3 text-right tabular-nums font-semibold text-blue-600">
-                    {formatKrw(r.netWorth)}
+                  <td className="px-4 py-3 text-right tabular-nums">{formatKrw(grandTotal.assetTotal)}</td>
+                  <td className="px-4 py-3 text-right tabular-nums">{formatKrw(grandTotal.liabilityTotal)}</td>
+                  <td className="px-4 py-3 text-right tabular-nums text-blue-600">
+                    {formatKrw(grandTotal.netWorth)}
                   </td>
                 </tr>
-              ))}
-              <tr className="bg-slate-50 font-bold">
-                <td className="px-4 py-3" colSpan={2}>
-                  합계
-                </td>
-                <td className="px-4 py-3 text-right tabular-nums">{formatKrw(grandTotal.assetTotal)}</td>
-                <td className="px-4 py-3 text-right tabular-nums">{formatKrw(grandTotal.liabilityTotal)}</td>
-                <td className="px-4 py-3 text-right tabular-nums text-blue-600">
-                  {formatKrw(grandTotal.netWorth)}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
     </div>

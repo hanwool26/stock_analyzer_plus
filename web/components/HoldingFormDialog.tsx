@@ -32,8 +32,8 @@ export default function HoldingFormDialog() {
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/30 px-4">
-          <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">
+        <div className="fixed inset-0 z-20 flex items-center justify-center overflow-y-auto bg-black/30 px-4 py-8">
+          <div className="w-full max-w-sm rounded-xl bg-white p-4 sm:p-6 shadow-xl">
             <h3 className="text-base font-bold text-slate-900 mb-4">보유 종목 추가</h3>
             <form ref={formRef} action={handleSubmit} className="space-y-3">
               <div className="grid grid-cols-2 gap-3">

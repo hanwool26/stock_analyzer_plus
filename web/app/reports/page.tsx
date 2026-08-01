@@ -17,7 +17,7 @@ export default function ReportsPage() {
               href={`/reports/${report.date}/${report.hour}`}
               className="flex items-center justify-between gap-3 px-5 py-4 hover:bg-slate-50 transition-colors"
             >
-              <div>
+              <div className="min-w-0 flex-1">
                 <div className="font-semibold text-slate-900">
                   {report.date} {String(report.hour).padStart(2, "0")}:00
                 </div>

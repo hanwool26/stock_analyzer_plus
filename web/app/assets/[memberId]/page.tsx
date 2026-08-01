@@ -44,7 +44,7 @@ export default async function MemberAssetsPage({
 
       <AssetsSubNav members={members.map((m) => ({ id: m.id, name: m.name }))} />
 
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <h2 className="text-lg font-bold text-slate-900">{member.name}</h2>
         <div className="flex items-center gap-3">
           <ConfirmDeleteButton

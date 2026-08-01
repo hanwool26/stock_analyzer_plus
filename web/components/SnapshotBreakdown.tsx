@@ -58,7 +58,7 @@ export default function SnapshotBreakdown({
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex items-start justify-between mb-4">
+      <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
         <div>
           <div className="font-bold text-slate-900">{formatDateOnlyKorean(snapshot.date)} 기준</div>
           {snapshot.memo && <div className="text-xs text-slate-400 mt-0.5">{snapshot.memo}</div>}
