@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { href: "/reports", label: "Reports" },
   { href: "/portfolio", label: "포트폴리오" },
   { href: "/assets", label: "가계자산" },
+  { href: "/coaching", label: "AI 코칭" },
 ];
 
 export default function Nav() {

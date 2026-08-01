@@ -28,7 +28,7 @@
 
 - **Next.js 16** (App Router, Turbopack) + **TypeScript**
 - **Tailwind CSS v4**
-- **Prisma 7** (`prisma-client` generator, `@prisma/adapter-better-sqlite3`) + **SQLite** (`web/dev.db`)
+- **Prisma 7** (`prisma-client` generator, `@prisma/adapter-pg`) + **Postgres**
 - **Recharts** (자산/순자산 추이 차트)
 - 서버 액션(Server Actions) 기반 CRUD, 별도 REST API 없음
 
@@ -51,18 +51,36 @@ stock_analyzer_plus/
 
 ## 시작하기
 
+Postgres DB가 필요합니다 (무료로 바로 만들려면 `npx create-db`, 자세한 내용은 아래 [배포하기](#배포하기-vercel) 참고).
+
 ```bash
 cd web
-npm install
-npx prisma migrate dev   # 최초 1회: SQLite DB 생성 및 마이그레이션
+cp .env.example .env      # DATABASE_URL 등 값 채우기
+npm install                # postinstall로 prisma generate 자동 실행
+npx prisma migrate dev     # 최초 1회: DB 스키마 마이그레이션
 npm run dev
 ```
 
 브라우저에서 `http://localhost:3000` 접속. 종료는 `Ctrl+C`.
 
-- 빌드: `npm run build` / `npm run start`
+- 빌드: `npm run build` (배포 시 `prisma migrate deploy`를 먼저 실행) / `npm run start`
 - 린트: `npm run lint`
-- DB는 `web/dev.db` (SQLite 파일)에 저장됩니다.
+- `.env`에 `BASIC_AUTH_USER` / `BASIC_AUTH_PASSWORD`를 둘 다 채우면 앱 전체에 Basic Auth가 걸립니다 (`web/proxy.ts`). 로컬 개발 중엔 보통 비워둡니다.
+
+## 배포하기 (Vercel)
+
+모바일 등 어디서든 접속하려면 Vercel에 배포합니다. **SQLite는 서버리스 환경에서 데이터가 유지되지 않으므로 반드시 호스팅 Postgres를 사용해야 합니다** (이미 `web/lib/db.ts`가 `@prisma/adapter-pg` 기반으로 되어 있음).
+
+1. **DB 준비**: `cd web && npx create-db` 로 무료 Prisma Postgres를 발급받거나, Vercel/Neon/Supabase 등에서 Postgres 인스턴스를 만들고 연결 문자열을 확보합니다.
+2. **로컬에서 마이그레이션 생성**: 발급받은 연결 문자열을 `web/.env`의 `DATABASE_URL`에 넣고 `npx prisma migrate dev --name init`을 실행해 초기 마이그레이션을 만듭니다. 이 마이그레이션 파일들(`prisma/migrations/`)은 git에 커밋되어야 배포 시 `prisma migrate deploy`가 적용할 수 있습니다.
+3. **GitHub에 push**.
+4. **Vercel 프로젝트 생성**: [vercel.com](https://vercel.com)에서 GitHub 저장소를 Import합니다. 이 저장소는 모노레포 구조라 **Root Directory를 반드시 `web`으로 지정**해야 합니다 (그렇지 않으면 빌드가 실패합니다).
+5. **환경변수 등록** (Vercel 프로젝트 → Settings → Environment Variables):
+   - `DATABASE_URL` (필수)
+   - `ANTHROPIC_API_KEY` (선택 — 앱 내 설정 다이얼로그에서 대신 등록해도 됨)
+   - `BASIC_AUTH_USER`, `BASIC_AUTH_PASSWORD` (외부에 공개되는 URL이므로 강력 권장)
+6. **Deploy**. 완료되면 `https://<project>.vercel.app` 주소로 PC/모바일 어디서나 접속할 수 있습니다.
+7. 이후 `main` 브랜치에 push할 때마다 Vercel이 자동으로 `prisma migrate deploy && next build`를 실행하며 재배포합니다.
 
 ## 로드맵
 
