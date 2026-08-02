@@ -4,6 +4,7 @@ import { computeTotals, groupByCategory, type FinanceItemLike } from "@/lib/fina
 import { formatKrw } from "@/lib/format";
 import { formatDateOnlyKorean } from "@/lib/date";
 import { getStoredApiKey } from "@/lib/settings";
+import { toKrw } from "@/lib/fx";
 
 export const CLAUDE_MODEL = process.env.ANTHROPIC_COACHING_MODEL || "claude-sonnet-5";
 
@@ -86,15 +87,53 @@ export async function buildHouseholdContext(): Promise<string> {
   ].join("\n\n");
 }
 
-export function buildSystemPrompt(householdContext: string): string {
+/** 보유 종목(포트폴리오) 현황을 LLM용 컨텍스트 텍스트로 만든다.
+ *  Holding은 가족 구성원에 종속되지 않는 가구 공용 포트폴리오이므로 가계자산과 별도 섹션으로 제공한다. */
+export async function buildPortfolioContext(): Promise<string> {
+  const holdings = await prisma.holding.findMany({ orderBy: { createdAt: "asc" } });
+
+  if (holdings.length === 0) {
+    return "등록된 보유 종목이 없습니다.";
+  }
+
+  const rows = holdings.map((h) => {
+    const valueKrw = toKrw(h.currentValue, h.currency);
+    const costKrw = toKrw(h.quantity * h.avgPrice, h.currency);
+    const returnPct = costKrw > 0 ? ((valueKrw - costKrw) / costKrw) * 100 : 0;
+    return { ...h, valueKrw, costKrw, returnPct };
+  });
+
+  const totalValueKrw = rows.reduce((sum, h) => sum + h.valueKrw, 0);
+  const totalCostKrw = rows.reduce((sum, h) => sum + h.costKrw, 0);
+  const totalReturnPct = totalCostKrw > 0 ? ((totalValueKrw - totalCostKrw) / totalCostKrw) * 100 : 0;
+
+  const lines = rows.map(
+    (h) =>
+      `  - ${h.name} (${h.ticker}, ${h.region}): 수량 ${h.quantity}, 평단가 ${h.avgPrice.toLocaleString("ko-KR")} ${h.currency}, ` +
+      `평가금액 ${formatKrw(h.valueKrw)}, 수익률 ${h.returnPct.toFixed(2)}%`
+  );
+
   return [
-    "당신은 사용자 가족의 가계 자산 데이터를 바탕으로 답변하는 AI 재무 코치입니다.",
-    "아래는 가족 구성원별 최신 자산/부채 스냅샷 데이터입니다. 반드시 이 데이터를 근거로만 답변하세요.",
+    "# 보유 종목 현황 (포트폴리오)",
+    ...lines,
+    "## 포트폴리오 합계",
+    `- 총 평가금액: ${formatKrw(totalValueKrw)}`,
+    `- 총 매입금액: ${formatKrw(totalCostKrw)}`,
+    `- 총 수익률: ${totalReturnPct.toFixed(2)}%`,
+  ].join("\n");
+}
+
+export function buildSystemPrompt(householdContext: string, portfolioContext: string): string {
+  return [
+    "당신은 사용자 가족의 가계 자산 및 보유 종목(포트폴리오) 데이터를 바탕으로 답변하는 AI 재무 코치입니다.",
+    "아래는 가족 구성원별 최신 자산/부채 스냅샷 데이터와 보유 종목 현황입니다. 반드시 이 데이터를 근거로만 답변하세요.",
     "데이터에 없는 내용은 추측하지 말고, 정보가 부족하면 그렇다고 안내하세요.",
     "답변은 한국어로, 간결하고 실질적으로 작성하세요.",
     "이 답변은 투자 권유가 아니며 참고용 정보임을 전제로 답변하세요.",
     "",
     householdContext,
+    "",
+    portfolioContext,
   ].join("\n");
 }
 

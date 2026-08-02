@@ -3,7 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { askClaude, buildHouseholdContext, buildSystemPrompt, deriveConversationTitle } from "@/lib/coaching";
+import {
+  askClaude,
+  buildHouseholdContext,
+  buildPortfolioContext,
+  buildSystemPrompt,
+  deriveConversationTitle,
+} from "@/lib/coaching";
 import { saveStoredApiKey } from "@/lib/settings";
 
 export async function saveApiKey(apiKey: string): Promise<void> {
@@ -18,8 +24,11 @@ export async function createConversation(message: string): Promise<{ conversatio
   const trimmed = message.trim();
   if (!trimmed) throw new Error("질문을 입력해주세요.");
 
-  const context = await buildHouseholdContext();
-  const systemPrompt = buildSystemPrompt(context);
+  const [householdContext, portfolioContext] = await Promise.all([
+    buildHouseholdContext(),
+    buildPortfolioContext(),
+  ]);
+  const systemPrompt = buildSystemPrompt(householdContext, portfolioContext);
   const reply = await askClaude(systemPrompt, [{ role: "user", content: trimmed }]);
 
   const conversation = await prisma.conversation.create({
@@ -48,8 +57,11 @@ export async function sendMessage(conversationId: string, message: string): Prom
   });
   if (!conversation) throw new Error("대화를 찾을 수 없습니다.");
 
-  const context = await buildHouseholdContext();
-  const systemPrompt = buildSystemPrompt(context);
+  const [householdContext, portfolioContext] = await Promise.all([
+    buildHouseholdContext(),
+    buildPortfolioContext(),
+  ]);
+  const systemPrompt = buildSystemPrompt(householdContext, portfolioContext);
   const history = [
     ...conversation.messages.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
     { role: "user" as const, content: trimmed },
