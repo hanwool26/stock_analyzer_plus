@@ -4,7 +4,7 @@ import { computeTotals, groupByCategory, type FinanceItemLike } from "@/lib/fina
 import { formatKrw } from "@/lib/format";
 import { formatDateOnlyKorean } from "@/lib/date";
 import { getStoredApiKey } from "@/lib/settings";
-import { toKrw } from "@/lib/fx";
+import { getLiveHoldingValuations } from "@/lib/portfolio-valuation";
 
 export const CLAUDE_MODEL = process.env.ANTHROPIC_COACHING_MODEL || "claude-sonnet-5";
 
@@ -96,12 +96,7 @@ export async function buildPortfolioContext(): Promise<string> {
     return "등록된 보유 종목이 없습니다.";
   }
 
-  const rows = holdings.map((h) => {
-    const valueKrw = toKrw(h.currentValue, h.currency);
-    const costKrw = toKrw(h.quantity * h.avgPrice, h.currency);
-    const returnPct = costKrw > 0 ? ((valueKrw - costKrw) / costKrw) * 100 : 0;
-    return { ...h, valueKrw, costKrw, returnPct };
-  });
+  const { valuations: rows } = await getLiveHoldingValuations(holdings);
 
   const totalValueKrw = rows.reduce((sum, h) => sum + h.valueKrw, 0);
   const totalCostKrw = rows.reduce((sum, h) => sum + h.costKrw, 0);

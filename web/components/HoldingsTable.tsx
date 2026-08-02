@@ -6,14 +6,14 @@ import { addTransaction, deleteHolding } from "@/app/portfolio/actions";
 import { formatCurrency, formatKrw, formatSignedPct } from "@/lib/format";
 import ConfirmDeleteButton from "./ConfirmDeleteButton";
 
-type HoldingRow = Holding & { valueKrw: number; costKrw: number; returnPct: number };
+type HoldingRow = Holding & { valueKrw: number; costKrw: number; returnPct: number; isLive: boolean; livePrice: number | null };
 type SortKey = "name" | "quantity" | "avgPrice" | "valueKrw" | "returnPct";
 
 const COLUMNS: { key: SortKey; label: string; align: "left" | "right"; defaultDir: "asc" | "desc" }[] = [
   { key: "name", label: "종목", align: "left", defaultDir: "asc" },
   { key: "quantity", label: "수량", align: "right", defaultDir: "desc" },
-  { key: "avgPrice", label: "평단가", align: "right", defaultDir: "desc" },
-  { key: "valueKrw", label: "평가금액", align: "right", defaultDir: "desc" },
+  { key: "avgPrice", label: "시세/평단가", align: "right", defaultDir: "desc" },
+  { key: "valueKrw", label: "매입/평가금액", align: "right", defaultDir: "desc" },
   { key: "returnPct", label: "수익률", align: "right", defaultDir: "desc" },
 ];
 
@@ -152,16 +152,28 @@ export default function HoldingsTable({ holdings }: { holdings: HoldingRow[] }) 
             {sorted.map((h) => (
               <tr key={h.id} className="align-top">
                 <td className="px-4 py-3">
-                  <div className="font-semibold text-slate-900">{h.name}</div>
+                  <div className="flex items-center gap-1.5 font-semibold text-slate-900">
+                    {h.name}
+                    {!h.isLive && (
+                      <span
+                        title="실시간 시세 조회에 실패해 마지막 등록값을 표시합니다."
+                        className="inline-block h-1.5 w-1.5 rounded-full bg-slate-300"
+                      />
+                    )}
+                  </div>
                   <div className="text-xs text-slate-400">
                     {h.ticker} &middot; {h.region === "KR" ? "국내" : "해외"}
                   </div>
                 </td>
                 <td className="px-4 py-3 text-right tabular-nums">{h.quantity.toLocaleString("ko-KR")}</td>
                 <td className="px-4 py-3 text-right tabular-nums">
-                  {formatCurrency(h.avgPrice, h.currency)}
+                  <div className="text-[11px] text-slate-400">{h.livePrice != null ? formatCurrency(h.livePrice, h.currency) : "-"}</div>
+                  <div>{formatCurrency(h.avgPrice, h.currency)}</div>
                 </td>
-                <td className="px-4 py-3 text-right tabular-nums font-semibold">{formatKrw(h.valueKrw)}</td>
+                <td className="px-4 py-3 text-right tabular-nums font-semibold">
+                  <div className="text-[11px] font-normal text-slate-400">{formatKrw(h.costKrw)}</div>
+                  <div>{formatKrw(h.valueKrw)}</div>
+                </td>
                 <td
                   className={`px-4 py-3 text-right tabular-nums font-semibold ${
                     h.returnPct > 0 ? "text-red-600" : h.returnPct < 0 ? "text-blue-600" : "text-slate-500"
@@ -184,7 +196,8 @@ export default function HoldingsTable({ holdings }: { holdings: HoldingRow[] }) 
         </table>
       </div>
       <p className="px-4 py-2.5 text-[11px] text-slate-400 border-t border-slate-100">
-        * 평가금액/수익률은 최근 가져오기(엑셀) 시점 기준입니다. 실시간 시세는 아직 연동되지 않았습니다.
+        * 평가금액/수익률은 네이버·야후 파이낸스 실시간 시세와 실시간 환율(최대 1분 지연) 기준입니다. 회색 점이 표시된 종목은
+        시세 조회에 실패해 마지막 등록값을 표시합니다.
       </p>
     </div>
   );

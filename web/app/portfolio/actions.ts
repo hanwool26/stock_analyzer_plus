@@ -5,7 +5,16 @@ import * as XLSX from "xlsx";
 import iconv from "iconv-lite";
 import { prisma } from "@/lib/db";
 import { STOCK_TICKER_BY_NAME } from "@/lib/stock-lookup";
-import { toKrw } from "@/lib/fx";
+
+type ParsedHolding = {
+  ticker: string;
+  name: string;
+  region: "KR" | "US";
+  currency: "KRW" | "USD";
+  quantity: number;
+  avgPrice: number;
+  currentValue: number;
+};
 
 export async function addHolding(formData: FormData) {
   const ticker = String(formData.get("ticker") ?? "").trim();
@@ -87,14 +96,8 @@ export async function deleteHolding(holdingId: string) {
   revalidatePath("/portfolio");
 }
 
-// 증권사 잔고 CSV(계좌번호/종목명/잔고수량/매수금액/.../잔고구분/...)를 파싱해
-// 기존 보유 종목을 전부 삭제하고 새 데이터로 교체한다. 국내 CSV는 CP949 인코딩이 일반적이라 BOM 유무로 판별한다.
-export async function importHoldings(formData: FormData) {
-  const file = formData.get("file");
-  if (!(file instanceof File) || file.size === 0) {
-    throw new Error("파일을 선택해주세요.");
-  }
-
+// 메리츠증권 MTS에서 내보낸 엑셀/CSV를 파싱한다. CP949 인코딩이 일반적이라 BOM 유무로 판별한다.
+async function parseSheetRows(file: File): Promise<unknown[][]> {
   const buffer = Buffer.from(await file.arrayBuffer());
   const isCsv = file.name.toLowerCase().endsWith(".csv");
 
@@ -115,23 +118,30 @@ export async function importHoldings(formData: FormData) {
   }
 
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
-  const rows: unknown[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+  return XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+}
+
+function parseNumber(value: unknown): number {
+  return Number(String(value ?? "").replace(/,/g, ""));
+}
+
+// 국내주식 잔고 CSV: 종목명/보유수량/매입가(주당 평균단가)/평가금액이 종목당 1행.
+function parseKoreanStocksRows(rows: unknown[][]): { parsed: ParsedHolding[]; errors: string[] } {
   if (rows.length < 2) {
-    throw new Error("가져올 데이터가 없습니다.");
+    return { parsed: [], errors: ["국내주식 CSV: 가져올 데이터가 없습니다."] };
   }
 
   const header = rows[0].map((h) => String(h).trim());
   const nameIdx = header.indexOf("종목명");
-  const qtyIdx = header.indexOf("잔고수량");
-  const costIdx = header.indexOf("매수금액");
+  const qtyIdx = header.indexOf("보유수량");
+  const avgPriceIdx = header.indexOf("매입가");
   const valueIdx = header.indexOf("평가금액");
-  const gubunIdx = header.indexOf("잔고구분");
 
-  if (nameIdx === -1 || qtyIdx === -1 || costIdx === -1 || valueIdx === -1 || gubunIdx === -1) {
-    throw new Error("CSV 형식을 확인해주세요. (종목명/잔고수량/매수금액/평가금액/잔고구분 컬럼이 필요합니다.)");
+  if ([nameIdx, qtyIdx, avgPriceIdx, valueIdx].includes(-1)) {
+    return { parsed: [], errors: ["국내주식 CSV 형식을 확인해주세요. (종목명/보유수량/매입가/평가금액 컬럼이 필요합니다.)"] };
   }
 
-  const parsedRows: { ticker: string; name: string; region: string; currency: string; quantity: number; avgPrice: number; currentValue: number }[] = [];
+  const parsed: ParsedHolding[] = [];
   const errors: string[] = [];
 
   rows.slice(1).forEach((row, i) => {
@@ -139,55 +149,128 @@ export async function importHoldings(formData: FormData) {
     if (!name) return;
 
     const rowNum = i + 2;
-    const quantity = Number(String(row[qtyIdx] ?? "").replace(/,/g, ""));
-    const totalCost = Number(String(row[costIdx] ?? "").replace(/,/g, ""));
-    const totalValue = Number(String(row[valueIdx] ?? "").replace(/,/g, ""));
-    const gubun = String(row[gubunIdx] ?? "").trim();
+    const quantity = parseNumber(row[qtyIdx]);
+    const avgPrice = parseNumber(row[avgPriceIdx]);
+    const currentValue = parseNumber(row[valueIdx]);
 
     if (!Number.isFinite(quantity) || quantity <= 0) {
-      errors.push(`${rowNum}행 (${name}): 잔고수량이 올바르지 않습니다.`);
+      errors.push(`국내주식 CSV ${rowNum}행 (${name}): 보유수량이 올바르지 않습니다.`);
       return;
     }
-    if (!Number.isFinite(totalCost) || totalCost <= 0) {
-      errors.push(`${rowNum}행 (${name}): 매수금액이 올바르지 않습니다.`);
+    if (!Number.isFinite(avgPrice) || avgPrice <= 0) {
+      errors.push(`국내주식 CSV ${rowNum}행 (${name}): 매입가가 올바르지 않습니다.`);
       return;
     }
-    if (!Number.isFinite(totalValue) || totalValue < 0) {
-      errors.push(`${rowNum}행 (${name}): 평가금액이 올바르지 않습니다.`);
-      return;
-    }
-
-    let region: string;
-    if (gubun.includes("해외")) {
-      region = "US";
-    } else if (gubun.includes("보통") || gubun.includes("국내")) {
-      region = "KR";
-    } else {
-      errors.push(`${rowNum}행 (${name}): 알 수 없는 잔고구분 "${gubun}"입니다.`);
+    if (!Number.isFinite(currentValue) || currentValue < 0) {
+      errors.push(`국내주식 CSV ${rowNum}행 (${name}): 평가금액이 올바르지 않습니다.`);
       return;
     }
 
     const ticker = STOCK_TICKER_BY_NAME[name];
     if (!ticker) {
-      errors.push(`${rowNum}행 (${name}): 티커 매핑이 없습니다. web/lib/stock-lookup.ts에 추가해주세요.`);
+      errors.push(`국내주식 CSV ${rowNum}행 (${name}): 티커 매핑이 없습니다. web/lib/stock-lookup.ts에 추가해주세요.`);
       return;
     }
 
-    // 매수금액/평가금액은 국내/해외 구분 없이 이미 원화로 환산된 금액이라 currency는 항상 KRW로 저장한다.
-    parsedRows.push({ ticker, name, region, currency: "KRW", quantity, avgPrice: totalCost / quantity, currentValue: totalValue });
+    parsed.push({ ticker, name, region: "KR", currency: "KRW", quantity, avgPrice, currentValue });
   });
+
+  return { parsed, errors };
+}
+
+// 해외주식 잔고 CSV: 헤더가 2행으로 병합되어 있고, 종목당 2행 1세트다.
+// 1행(코드행): 상품구분/국가/종목코드/보유수량/현재가/평가손익/평가금액(외화)
+// 2행(이름행): (공란)/(공란)/종목명/매도가능/평균가(주당 평균단가)/수익률(%)/매입금액(외화)
+function parseGlobalStocksRows(rows: unknown[][]): { parsed: ParsedHolding[]; errors: string[] } {
+  if (rows.length < 4 || String(rows[0]?.[2]).trim() !== "종목코드" || String(rows[1]?.[2]).trim() !== "종목명") {
+    return {
+      parsed: [],
+      errors: ["해외주식 CSV 형식을 확인해주세요. (종목코드/종목명이 2행 헤더로 병합된 global_stocks.csv 형식이어야 합니다.)"],
+    };
+  }
+
+  const parsed: ParsedHolding[] = [];
+  const errors: string[] = [];
+  const dataRows = rows.slice(2);
+
+  for (let i = 0; i < dataRows.length; i += 2) {
+    const codeRow = dataRows[i];
+    const ticker = String(codeRow?.[2] ?? "").trim();
+    if (!ticker) continue;
+
+    const rowNum = i + 3;
+    const nameRow = dataRows[i + 1];
+    if (!nameRow) {
+      errors.push(`해외주식 CSV ${rowNum}행 (${ticker}): 종목명 행이 누락되었습니다.`);
+      continue;
+    }
+
+    const name = String(nameRow[2] ?? "").trim();
+    const quantity = parseNumber(codeRow[3]);
+    const nameRowQuantity = parseNumber(nameRow[3]);
+    const avgPrice = parseNumber(nameRow[4]);
+    const currentValue = parseNumber(codeRow[6]);
+
+    if (!name) {
+      errors.push(`해외주식 CSV ${rowNum}행 (${ticker}): 종목명이 비어 있습니다.`);
+      continue;
+    }
+    if (!Number.isFinite(quantity) || quantity <= 0 || quantity !== nameRowQuantity) {
+      errors.push(`해외주식 CSV ${rowNum}행 (${name}): 보유수량이 올바르지 않습니다.`);
+      continue;
+    }
+    if (!Number.isFinite(avgPrice) || avgPrice <= 0) {
+      errors.push(`해외주식 CSV ${rowNum}행 (${name}): 평균가가 올바르지 않습니다.`);
+      continue;
+    }
+    if (!Number.isFinite(currentValue) || currentValue < 0) {
+      errors.push(`해외주식 CSV ${rowNum}행 (${name}): 평가금액이 올바르지 않습니다.`);
+      continue;
+    }
+
+    parsed.push({ ticker, name, region: "US", currency: "USD", quantity, avgPrice, currentValue });
+  }
+
+  return { parsed, errors };
+}
+
+// 국내/해외 잔고 CSV를 각각 파싱해 해당 지역(region)의 기존 보유 종목만 교체한다.
+// 두 CSV 모두 평균단가(현지통화)를 직접 제공하므로 환율 가정 없이 정확한 값을 저장할 수 있다.
+export async function importHoldings(formData: FormData) {
+  const krFile = formData.get("krFile");
+  const usFile = formData.get("usFile");
+  const hasKrFile = krFile instanceof File && krFile.size > 0;
+  const hasUsFile = usFile instanceof File && usFile.size > 0;
+
+  if (!hasKrFile && !hasUsFile) {
+    throw new Error("국내주식 또는 해외주식 CSV 파일을 하나 이상 선택해주세요.");
+  }
+
+  const errors: string[] = [];
+  let krRows: ParsedHolding[] = [];
+  let usRows: ParsedHolding[] = [];
+
+  if (hasKrFile) {
+    const { parsed, errors: krErrors } = parseKoreanStocksRows(await parseSheetRows(krFile as File));
+    krRows = parsed;
+    errors.push(...krErrors);
+  }
+  if (hasUsFile) {
+    const { parsed, errors: usErrors } = parseGlobalStocksRows(await parseSheetRows(usFile as File));
+    usRows = parsed;
+    errors.push(...usErrors);
+  }
 
   if (errors.length > 0) {
     throw new Error(errors.join("\n"));
   }
-  if (parsedRows.length === 0) {
+  if (krRows.length === 0 && usRows.length === 0) {
     throw new Error("가져올 데이터가 없습니다.");
   }
 
   const now = new Date();
-  await prisma.$transaction([
-    prisma.holding.deleteMany({}),
-    ...parsedRows.map((r) =>
+  function createHoldingOps(rows: ParsedHolding[]) {
+    return rows.map((r) =>
       prisma.holding.create({
         data: {
           ticker: r.ticker,
@@ -207,18 +290,22 @@ export async function importHoldings(formData: FormData) {
           },
         },
       })
-    ),
+    );
+  }
+
+  await prisma.$transaction([
+    ...(hasKrFile ? [prisma.holding.deleteMany({ where: { region: "KR" } })] : []),
+    ...(hasUsFile ? [prisma.holding.deleteMany({ where: { region: "US" } })] : []),
+    ...createHoldingOps(krRows),
+    ...createHoldingOps(usRows),
   ]);
 
   revalidatePath("/portfolio");
 }
 
-export async function ensureTodaySnapshot() {
-  const holdings = await prisma.holding.findMany();
-
-  const totalValue = holdings.reduce((sum, h) => sum + toKrw(h.currentValue, h.currency), 0);
-  const totalCost = holdings.reduce((sum, h) => sum + toKrw(h.quantity * h.avgPrice, h.currency), 0);
-
+// totalValue/totalCost는 호출부(포트폴리오 페이지)에서 이미 계산한 실시간 평가값을 그대로 받는다.
+// 이 함수 내부에서 다시 시세를 조회하면 같은 요청 안에서 실시간 API를 중복 호출하게 된다.
+export async function ensureTodaySnapshot(totalValue: number, totalCost: number) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 

@@ -13,3 +13,16 @@ export function formatDateOnlyKorean(date: Date): string {
   const [y, m, d] = formatDateOnlyISO(date).split("-").map(Number);
   return `${y}년 ${m}월 ${d}일`;
 }
+
+// 위 formatDateOnlyKorean과 달리 시각을 포함한 실제 타임스탬프(예: 시세 조회 시각)를
+// 포맷할 때 쓴다. 항상 한국 시간(Asia/Seoul) 기준으로 표시한다.
+export function formatDateTimeKorean(date: Date): string {
+  const datePart = date.toLocaleDateString("ko-KR", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+  const timePart = date.toLocaleTimeString("ko-KR", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit" });
+  return `${datePart} ${timePart}`;
+}

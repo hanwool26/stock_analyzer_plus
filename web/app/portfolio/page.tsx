@@ -5,25 +5,21 @@ import ImportHoldingsDialog from "@/components/ImportHoldingsDialog";
 import HoldingsTable from "@/components/HoldingsTable";
 import CategoryPieChart from "@/components/CategoryPieChart";
 import { formatKrw } from "@/lib/format";
-import { toKrw } from "@/lib/fx";
+import { formatDateTimeKorean } from "@/lib/date";
+import { getLiveHoldingValuations } from "@/lib/portfolio-valuation";
 
 export const dynamic = "force-dynamic";
 
 const REGION_LABEL: Record<string, string> = { KR: "국내", US: "해외" };
 
 export default async function PortfolioPage() {
-  await ensureTodaySnapshot();
-
   const holdings = await prisma.holding.findMany({ orderBy: { createdAt: "asc" } });
-
-  const rows = holdings.map((h) => {
-    const valueKrw = toKrw(h.currentValue, h.currency);
-    const costKrw = toKrw(h.quantity * h.avgPrice, h.currency);
-    const returnPct = costKrw > 0 ? ((valueKrw - costKrw) / costKrw) * 100 : 0;
-    return { ...h, valueKrw, costKrw, returnPct };
-  });
+  const { valuations: rows, usdKrwRate } = await getLiveHoldingValuations(holdings);
+  const quotedAt = new Date();
 
   const totalValueKrw = rows.reduce((sum, h) => sum + h.valueKrw, 0);
+  const totalCostKrw = rows.reduce((sum, h) => sum + h.costKrw, 0);
+  await ensureTodaySnapshot(totalValueKrw, totalCostKrw);
 
   const allocationGroups = ["KR", "US"]
     .map((region) => {
@@ -49,7 +45,7 @@ export default async function PortfolioPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="text-xs text-slate-400 mb-1">총 평가금액 (KRW 환산)</div>
           <div className="text-2xl font-bold text-slate-900">{formatKrw(totalValueKrw)}</div>
@@ -57,6 +53,11 @@ export default async function PortfolioPage() {
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="text-xs text-slate-400 mb-1">보유 종목 수</div>
           <div className="text-2xl font-bold text-slate-900">{holdings.length}개</div>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="text-xs text-slate-400 mb-1">실시간 환율 (USD/KRW)</div>
+          <div className="text-2xl font-bold text-slate-900">{formatKrw(usdKrwRate)}</div>
+          <div className="text-[11px] text-slate-400 mt-0.5">{formatDateTimeKorean(quotedAt)} 기준 시세조회</div>
         </div>
       </div>
 
