@@ -1,39 +1,52 @@
 import { prisma } from "@/lib/db";
 import { ensureTodaySnapshot } from "./actions";
 import HoldingFormDialog from "@/components/HoldingFormDialog";
+import ImportHoldingsDialog from "@/components/ImportHoldingsDialog";
 import HoldingsTable from "@/components/HoldingsTable";
-import AssetTrendChart from "@/components/AssetTrendChart";
+import CategoryPieChart from "@/components/CategoryPieChart";
 import { formatKrw } from "@/lib/format";
+import { toKrw } from "@/lib/fx";
 
 export const dynamic = "force-dynamic";
 
-function toKrw(value: number, currency: string, usdKrwRate: number): number {
-  return currency === "USD" ? value * usdKrwRate : value;
-}
-
-const USD_KRW_RATE = 1380; // 실시간 환율 연동 전 임시 고정값
+const REGION_LABEL: Record<string, string> = { KR: "국내", US: "해외" };
 
 export default async function PortfolioPage() {
   await ensureTodaySnapshot();
 
-  const [holdings, snapshots] = await Promise.all([
-    prisma.holding.findMany({ orderBy: { createdAt: "asc" } }),
-    prisma.portfolioSnapshot.findMany({ orderBy: { date: "asc" } }),
-  ]);
+  const holdings = await prisma.holding.findMany({ orderBy: { createdAt: "asc" } });
 
-  const totalValueKrw = holdings.reduce(
-    (sum, h) => sum + toKrw(h.quantity * h.avgPrice, h.currency, USD_KRW_RATE),
-    0
-  );
+  const rows = holdings.map((h) => {
+    const valueKrw = toKrw(h.currentValue, h.currency);
+    const costKrw = toKrw(h.quantity * h.avgPrice, h.currency);
+    const returnPct = costKrw > 0 ? ((valueKrw - costKrw) / costKrw) * 100 : 0;
+    return { ...h, valueKrw, costKrw, returnPct };
+  });
+
+  const totalValueKrw = rows.reduce((sum, h) => sum + h.valueKrw, 0);
+
+  const allocationGroups = ["KR", "US"]
+    .map((region) => {
+      const items = rows.filter((h) => h.region === region);
+      return {
+        category: REGION_LABEL[region],
+        subtotal: items.reduce((s, h) => s + h.valueKrw, 0),
+        items: items.map((h) => ({ name: h.name, amount: h.valueKrw })),
+      };
+    })
+    .filter((g) => g.items.length > 0);
 
   return (
     <div className="space-y-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-slate-900">포트폴리오</h1>
-          <p className="text-sm text-slate-500 mt-0.5">보유 종목과 자산 추이를 관리합니다.</p>
+          <p className="text-sm text-slate-500 mt-0.5">보유 종목과 비중을 관리합니다.</p>
         </div>
-        <HoldingFormDialog />
+        <div className="flex items-center gap-2">
+          <ImportHoldingsDialog />
+          <HoldingFormDialog />
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -48,13 +61,15 @@ export default async function PortfolioPage() {
       </div>
 
       <section>
-        <h2 className="text-base font-bold text-slate-900 mb-3">자산 추이</h2>
-        <AssetTrendChart snapshots={snapshots} />
+        <h2 className="text-base font-bold text-slate-900 mb-3">보유 비중</h2>
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <CategoryPieChart title="보유 비중" groups={allocationGroups} />
+        </div>
       </section>
 
       <section>
         <h2 className="text-base font-bold text-slate-900 mb-3">보유 종목</h2>
-        <HoldingsTable holdings={holdings} />
+        <HoldingsTable holdings={rows} />
       </section>
     </div>
   );

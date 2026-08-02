@@ -19,6 +19,7 @@ model Holding {
   region       String // "KR" | "US"
   quantity     Float
   avgPrice     Float
+  currentValue Float         @default(0) // 총 평가금액 스냅샷 (마지막 가져오기/거래 시점 기준)
   currency     String // "KRW" | "USD"
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt

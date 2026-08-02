@@ -1,10 +1,21 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import type { Holding } from "@/app/generated/prisma/client";
 import { addTransaction, deleteHolding } from "@/app/portfolio/actions";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatKrw, formatSignedPct } from "@/lib/format";
 import ConfirmDeleteButton from "./ConfirmDeleteButton";
+
+type HoldingRow = Holding & { valueKrw: number; costKrw: number; returnPct: number };
+type SortKey = "name" | "quantity" | "avgPrice" | "valueKrw" | "returnPct";
+
+const COLUMNS: { key: SortKey; label: string; align: "left" | "right"; defaultDir: "asc" | "desc" }[] = [
+  { key: "name", label: "종목", align: "left", defaultDir: "asc" },
+  { key: "quantity", label: "수량", align: "right", defaultDir: "desc" },
+  { key: "avgPrice", label: "평단가", align: "right", defaultDir: "desc" },
+  { key: "valueKrw", label: "평가금액", align: "right", defaultDir: "desc" },
+  { key: "returnPct", label: "수익률", align: "right", defaultDir: "desc" },
+];
 
 function TransactionRow({ holding }: { holding: Holding }) {
   const [open, setOpen] = useState(false);
@@ -82,7 +93,31 @@ function TransactionRow({ holding }: { holding: Holding }) {
   );
 }
 
-export default function HoldingsTable({ holdings }: { holdings: Holding[] }) {
+export default function HoldingsTable({ holdings }: { holdings: HoldingRow[] }) {
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+  function handleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir(COLUMNS.find((c) => c.key === key)!.defaultDir);
+    }
+  }
+
+  const sorted = useMemo(() => {
+    if (!sortKey) return holdings;
+    const copy = [...holdings];
+    copy.sort((a, b) => {
+      const av = a[sortKey];
+      const bv = b[sortKey];
+      const cmp = typeof av === "string" ? av.localeCompare(bv as string) : (av as number) - (bv as number);
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+    return copy;
+  }, [holdings, sortKey, sortDir]);
+
   if (holdings.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-400">
@@ -94,19 +129,27 @@ export default function HoldingsTable({ holdings }: { holdings: Holding[] }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[640px] text-sm">
+        <table className="w-full min-w-[720px] text-sm">
           <thead className="bg-slate-50 text-xs text-slate-400">
             <tr className="text-left">
-              <th className="px-4 py-2.5 font-medium">종목</th>
-              <th className="px-4 py-2.5 font-medium text-right">수량</th>
-              <th className="px-4 py-2.5 font-medium text-right">평단가</th>
-              <th className="px-4 py-2.5 font-medium text-right">평가금액</th>
+              {COLUMNS.map((col) => (
+                <th key={col.key} className={`px-4 py-2.5 font-medium ${col.align === "right" ? "text-right" : "text-left"}`}>
+                  <button
+                    type="button"
+                    onClick={() => handleSort(col.key)}
+                    className="inline-flex items-center gap-0.5 hover:text-slate-600"
+                  >
+                    {col.label}
+                    {sortKey === col.key && <span className="text-[10px]">{sortDir === "asc" ? "▲" : "▼"}</span>}
+                  </button>
+                </th>
+              ))}
               <th className="px-4 py-2.5 font-medium"></th>
               <th className="px-4 py-2.5 font-medium"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {holdings.map((h) => (
+            {sorted.map((h) => (
               <tr key={h.id} className="align-top">
                 <td className="px-4 py-3">
                   <div className="font-semibold text-slate-900">{h.name}</div>
@@ -118,8 +161,13 @@ export default function HoldingsTable({ holdings }: { holdings: Holding[] }) {
                 <td className="px-4 py-3 text-right tabular-nums">
                   {formatCurrency(h.avgPrice, h.currency)}
                 </td>
-                <td className="px-4 py-3 text-right tabular-nums font-semibold">
-                  {formatCurrency(h.quantity * h.avgPrice, h.currency)}
+                <td className="px-4 py-3 text-right tabular-nums font-semibold">{formatKrw(h.valueKrw)}</td>
+                <td
+                  className={`px-4 py-3 text-right tabular-nums font-semibold ${
+                    h.returnPct > 0 ? "text-red-600" : h.returnPct < 0 ? "text-blue-600" : "text-slate-500"
+                  }`}
+                >
+                  {formatSignedPct(h.returnPct)}
                 </td>
                 <td className="px-4 py-3">
                   <TransactionRow holding={h} />
@@ -136,7 +184,7 @@ export default function HoldingsTable({ holdings }: { holdings: Holding[] }) {
         </table>
       </div>
       <p className="px-4 py-2.5 text-[11px] text-slate-400 border-t border-slate-100">
-        * 실시간 시세 연동 전으로 평가금액은 매입 평단가 기준 근사치입니다.
+        * 평가금액/수익률은 최근 가져오기(엑셀) 시점 기준입니다. 실시간 시세는 아직 연동되지 않았습니다.
       </p>
     </div>
   );
