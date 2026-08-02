@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import ReactMarkdown, { type Components } from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { sendMessage } from "@/app/coaching/actions";
 
 interface MessageItem {
@@ -9,6 +11,42 @@ interface MessageItem {
   content: string;
   createdAt: string;
 }
+
+const markdownComponents: Components = {
+  p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
+  ul: ({ children }) => <ul className="mb-2 list-disc space-y-0.5 pl-5">{children}</ul>,
+  ol: ({ children }) => <ol className="mb-2 list-decimal space-y-0.5 pl-5">{children}</ol>,
+  li: ({ children }) => <li>{children}</li>,
+  strong: ({ children }) => <strong className="font-semibold text-slate-900">{children}</strong>,
+  a: ({ children, href }) => (
+    <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
+      {children}
+    </a>
+  ),
+  h1: ({ children }) => <h1 className="mb-2 mt-1 text-base font-bold">{children}</h1>,
+  h2: ({ children }) => <h2 className="mb-2 mt-1 text-sm font-bold">{children}</h2>,
+  h3: ({ children }) => <h3 className="mb-1 mt-1 text-sm font-semibold">{children}</h3>,
+  code: ({ children }) => (
+    <code className="rounded bg-slate-200 px-1 py-0.5 font-mono text-xs">{children}</code>
+  ),
+  table: ({ children }) => (
+    <div className="mb-2 overflow-x-auto">
+      <table className="w-full border-collapse text-left text-xs">{children}</table>
+    </div>
+  ),
+  thead: ({ children }) => <thead className="bg-slate-200/70">{children}</thead>,
+  tr: ({ children }) => <tr className="border-b border-slate-200">{children}</tr>,
+  th: ({ children, style }) => (
+    <th className="whitespace-nowrap px-2 py-1.5 font-semibold text-slate-700" style={style}>
+      {children}
+    </th>
+  ),
+  td: ({ children, style }) => (
+    <td className="px-2 py-1.5 align-top" style={style}>
+      {children}
+    </td>
+  ),
+};
 
 export default function ChatThread({
   conversationId,
@@ -42,11 +80,17 @@ export default function ChatThread({
           <div key={m.id} className={"flex " + (m.role === "user" ? "justify-end" : "justify-start")}>
             <div
               className={
-                "max-w-[80%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap " +
-                (m.role === "user" ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-800")
+                "max-w-[80%] rounded-lg px-3 py-2 text-sm " +
+                (m.role === "user" ? "bg-blue-600 text-white whitespace-pre-wrap" : "bg-slate-100 text-slate-800")
               }
             >
-              {m.content}
+              {m.role === "assistant" ? (
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                  {m.content}
+                </ReactMarkdown>
+              ) : (
+                m.content
+              )}
             </div>
           </div>
         ))}
