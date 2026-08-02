@@ -119,7 +119,7 @@ export async function askClaude(systemPrompt: string, history: ChatMessage[]): P
   try {
     response = await client.messages.create({
       model: CLAUDE_MODEL,
-      max_tokens: 2048,
+      max_tokens: 8192,
       system: systemPrompt,
       messages: history,
     });
