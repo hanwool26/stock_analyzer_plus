@@ -4,7 +4,7 @@ import { computeTotals } from "@/lib/finance";
 import { formatKrw } from "@/lib/format";
 import { formatDateOnlyISO, formatDateOnlyKorean } from "@/lib/date";
 import AssetsSubNav from "@/components/AssetsSubNav";
-import NetWorthTrendChart, { type TrendSeries } from "@/components/NetWorthTrendChart";
+import HouseholdTrendChart, { type HouseholdTrendPoint } from "@/components/HouseholdTrendChart";
 
 export const dynamic = "force-dynamic";
 
@@ -31,13 +31,27 @@ export default async function AssetsSummaryPage() {
     { assetTotal: 0, liabilityTotal: 0, netWorth: 0 }
   );
 
-  const series: TrendSeries[] = members.map((m) => ({
-    name: m.name,
-    points: m.snapshots.map((s) => ({
-      date: formatDateOnlyISO(s.date),
-      netWorth: computeTotals(s.items).netWorth,
-    })),
-  }));
+  const allDates = Array.from(
+    new Set(members.flatMap((m) => m.snapshots.map((s) => formatDateOnlyISO(s.date))))
+  ).sort();
+
+  const householdTrend: HouseholdTrendPoint[] = allDates.map((date) => {
+    const totals = members.reduce(
+      (acc, m) => {
+        // snapshots are ordered asc by date, so the last one <= date is the carried-forward value
+        const asOf = m.snapshots.filter((s) => formatDateOnlyISO(s.date) <= date).pop();
+        if (!asOf) return acc;
+        const t = computeTotals(asOf.items);
+        return {
+          assetTotal: acc.assetTotal + t.assetTotal,
+          liabilityTotal: acc.liabilityTotal + t.liabilityTotal,
+          netWorth: acc.netWorth + t.netWorth,
+        };
+      },
+      { assetTotal: 0, liabilityTotal: 0, netWorth: 0 }
+    );
+    return { date, ...totals };
+  });
 
   return (
     <div>
@@ -49,8 +63,8 @@ export default async function AssetsSummaryPage() {
       <AssetsSubNav members={members.map((m) => ({ id: m.id, name: m.name }))} />
 
       <section className="mb-8">
-        <h2 className="text-base font-bold text-slate-900 mb-3">순자산 추이</h2>
-        <NetWorthTrendChart series={series} />
+        <h2 className="text-base font-bold text-slate-900 mb-3">가구 합계 추이</h2>
+        <HouseholdTrendChart data={householdTrend} />
       </section>
 
       <section>
