@@ -1,10 +1,22 @@
 import Link from "next/link";
-import { getLatestReport } from "@/lib/mock-reports";
+import { getLatestReport } from "@/lib/reports";
 import RecommendationCard from "@/components/RecommendationCard";
 import CategoryIssueCard from "@/components/CategoryIssueCard";
 
-export default function HomePage() {
-  const report = getLatestReport();
+export default async function HomePage() {
+  const report = await getLatestReport();
+
+  if (!report) {
+    return (
+      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h1 className="text-xl font-bold text-slate-900 mb-2">오늘의 시장 분석</h1>
+        <p className="text-sm text-slate-500">
+          아직 생성된 리포트가 없습니다. 파이프라인이 처음 실행되면 이 화면에 표시됩니다.
+        </p>
+      </div>
+    );
+  }
+
   const kr = report.recommendations.filter((r) => r.region === "KR");
 
   return (

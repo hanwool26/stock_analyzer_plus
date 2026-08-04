@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getReport } from "@/lib/mock-reports";
+import { getReport } from "@/lib/reports";
 import RecommendationCard from "@/components/RecommendationCard";
 import CategoryIssueCard from "@/components/CategoryIssueCard";
 
@@ -9,7 +9,7 @@ export default async function ReportDetailPage({
   params: Promise<{ date: string; hour: string }>;
 }) {
   const { date, hour } = await params;
-  const report = getReport(date, Number(hour));
+  const report = await getReport(date, Number(hour));
 
   if (!report) {
     notFound();

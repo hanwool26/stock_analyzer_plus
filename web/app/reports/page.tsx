@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { listReports } from "@/lib/mock-reports";
+import { listReports } from "@/lib/reports";
 
-export default function ReportsPage() {
-  const reports = listReports();
+export default async function ReportsPage() {
+  const reports = await listReports();
 
   return (
     <div>
