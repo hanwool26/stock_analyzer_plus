@@ -41,3 +41,44 @@ export async function fetchUsQuote(ticker: string): Promise<number | null> {
 export async function fetchUsdKrwRate(): Promise<number | null> {
   return fetchUsQuote("KRW=X");
 }
+
+export interface QuoteDetail {
+  price: number;
+  /** 전일 종가 대비 등락률(%). 상승 시 양수, 하락 시 음수. */
+  changePct: number;
+}
+
+/** 국내 종목 현재가 + 전일 대비 등락률 조회 (네이버 금융 실시간 폴링 API). */
+export async function fetchKrQuoteDetailed(ticker: string): Promise<QuoteDetail | null> {
+  const json = await fetchJson(`https://polling.finance.naver.com/api/realtime/domestic/stock/${ticker}`);
+  const data = (
+    json as {
+      datas?: { closePrice?: string; fluctuationsRatio?: string; compareToPreviousPrice?: { code?: string } }[];
+    } | null
+  )?.datas?.[0];
+  if (!data?.closePrice || !data.fluctuationsRatio) return null;
+
+  const price = Number(data.closePrice.replace(/,/g, ""));
+  const ratio = Math.abs(Number(data.fluctuationsRatio));
+  if (!Number.isFinite(price) || !Number.isFinite(ratio)) return null;
+
+  // compareToPreviousPrice.code: "2" = 상승(RISING), "1" = 하락(FALLING), 그 외(예: "3" 보합) = 0
+  const sign = data.compareToPreviousPrice?.code === "2" ? 1 : data.compareToPreviousPrice?.code === "1" ? -1 : 0;
+  return { price, changePct: ratio * sign };
+}
+
+/** 해외 종목 현재가 + 전일 대비 등락률 조회 (Yahoo Finance 차트 API). */
+export async function fetchUsQuoteDetailed(ticker: string): Promise<QuoteDetail | null> {
+  const json = await fetchJson(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}`);
+  const meta = (
+    json as {
+      chart?: { result?: { meta?: { regularMarketPrice?: number; previousClose?: number; chartPreviousClose?: number } }[] };
+    } | null
+  )?.chart?.result?.[0]?.meta;
+  const price = meta?.regularMarketPrice;
+  const previousClose = meta?.previousClose ?? meta?.chartPreviousClose;
+  if (typeof price !== "number" || typeof previousClose !== "number" || previousClose === 0) return null;
+  if (!Number.isFinite(price) || !Number.isFinite(previousClose)) return null;
+
+  return { price, changePct: ((price - previousClose) / previousClose) * 100 };
+}

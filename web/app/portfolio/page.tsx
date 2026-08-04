@@ -4,10 +4,12 @@ import HoldingFormDialog from "@/components/HoldingFormDialog";
 import ImportHoldingsDialog from "@/components/ImportHoldingsDialog";
 import HoldingsTable from "@/components/HoldingsTable";
 import CategoryPieChart from "@/components/CategoryPieChart";
+import PortfolioMoversSection from "@/components/PortfolioMoversSection";
 import BlurGate from "@/components/BlurGate";
 import { formatKrw } from "@/lib/format";
 import { formatDateTimeKorean } from "@/lib/date";
 import { getLiveHoldingValuations } from "@/lib/portfolio-valuation";
+import { getLatestPortfolioMoversReport } from "@/lib/portfolio-movers-reports";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +17,11 @@ const REGION_LABEL: Record<string, string> = { KR: "국내", US: "해외" };
 
 export default async function PortfolioPage() {
   const holdings = await prisma.holding.findMany({ orderBy: { createdAt: "asc" } });
-  const { valuations: rows, usdKrwRate } = await getLiveHoldingValuations(holdings);
+  const [{ valuations: rows, usdKrwRate }, krMoversReport, usMoversReport] = await Promise.all([
+    getLiveHoldingValuations(holdings),
+    getLatestPortfolioMoversReport("KR"),
+    getLatestPortfolioMoversReport("US"),
+  ]);
   const quotedAt = new Date();
 
   const totalValueKrw = rows.reduce((sum, h) => sum + h.valueKrw, 0);
@@ -69,6 +75,8 @@ export default async function PortfolioPage() {
           <CategoryPieChart title="보유 비중" groups={allocationGroups} />
         </div>
       </section>
+
+      <PortfolioMoversSection krReport={krMoversReport} usReport={usMoversReport} />
 
       <section>
         <h2 className="text-base font-bold text-slate-900 mb-3">보유 종목</h2>

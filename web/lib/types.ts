@@ -87,3 +87,29 @@ export const PERIOD_LABELS: Record<InterestPeriod, string> = {
   short: "단기(1~2주)",
   medium: "중기(1~3개월)",
 };
+
+export interface MoverNewsArticle {
+  title: string;
+  url: string;
+  source: string;
+  publishedAt: string;
+}
+
+export interface PortfolioMover {
+  ticker: string;
+  name: string;
+  changePct: number;
+  price: number;
+  currency: string;
+  /** Claude가 생성한 5~10줄 요약 (줄 단위 배열). */
+  newsSummary: string[];
+  articles: MoverNewsArticle[];
+}
+
+export interface PortfolioMoversReport {
+  market: Region;
+  date: string; // "YYYY-MM-DD" (장마감 기준일)
+  generatedAt: string; // ISO datetime
+  gainers: PortfolioMover[];
+  losers: PortfolioMover[];
+}

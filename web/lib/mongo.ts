@@ -21,3 +21,11 @@ export async function getReportsCollection() {
   const dbName = process.env.MONGODB_DB || "stock_analyzer";
   return client.db(dbName).collection("reports");
 }
+
+export async function getPortfolioMoversCollection() {
+  const promise = getMongoClientPromise();
+  if (!promise) return null;
+  const client = await promise;
+  const dbName = process.env.MONGODB_DB || "stock_analyzer";
+  return client.db(dbName).collection("portfolio_movers_reports");
+}

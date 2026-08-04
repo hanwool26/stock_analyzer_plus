@@ -38,24 +38,34 @@ else
   echo "==> claude CLI를 아직 못 찾았습니다. AI_BACKEND=cli 를 쓰려면 설치 후 이 스크립트를 다시 실행하세요."
 fi
 
-echo "==> systemd 유닛 생성 (${SYSTEMD_DIR})"
-sed \
-  -e "s|__PIPELINE_DIR__|$PIPELINE_DIR|g" \
-  -e "s|__USER__|$SERVICE_USER|g" \
-  -e "s|__EXTRA_PATH__|$EXTRA_PATH|g" \
-  "$PIPELINE_DIR/systemd/stock-analyzer.service" | sudo tee "$SYSTEMD_DIR/stock-analyzer.service" > /dev/null
+# 설치할 유닛 목록: 매크로 리포트(stock-analyzer) + 포트폴리오 등락률 TOP5 뉴스(KR/US)
+UNITS=(stock-analyzer portfolio-movers-kr portfolio-movers-us)
 
-sudo cp "$PIPELINE_DIR/systemd/stock-analyzer.timer" "$SYSTEMD_DIR/stock-analyzer.timer"
+echo "==> systemd 유닛 생성 (${SYSTEMD_DIR})"
+for unit in "${UNITS[@]}"; do
+  sed \
+    -e "s|__PIPELINE_DIR__|$PIPELINE_DIR|g" \
+    -e "s|__USER__|$SERVICE_USER|g" \
+    -e "s|__EXTRA_PATH__|$EXTRA_PATH|g" \
+    "$PIPELINE_DIR/systemd/$unit.service" | sudo tee "$SYSTEMD_DIR/$unit.service" > /dev/null
+
+  sudo cp "$PIPELINE_DIR/systemd/$unit.timer" "$SYSTEMD_DIR/$unit.timer"
+done
 
 echo "==> systemd 등록 및 타이머 활성화"
 sudo systemctl daemon-reload
-sudo systemctl enable --now stock-analyzer.timer
+for unit in "${UNITS[@]}"; do
+  sudo systemctl enable --now "$unit.timer"
+done
 
 echo ""
-echo "==> 완료. 확인 명령어:"
+echo "==> 완료. 확인 명령어 (유닛명: ${UNITS[*]}):"
 echo "    systemctl status stock-analyzer.timer"
-echo "    systemctl list-timers | grep stock-analyzer"
-echo "    sudo systemctl start stock-analyzer.service   # 지금 바로 1회 수동 실행"
-echo "    journalctl -u stock-analyzer.service -f        # 실시간 로그"
+echo "    systemctl list-timers | grep -E 'stock-analyzer|portfolio-movers'"
+echo "    sudo systemctl start stock-analyzer.service          # 지금 바로 1회 수동 실행"
+echo "    sudo systemctl start portfolio-movers-kr.service     # 포트폴리오 국내 리포트 수동 실행"
+echo "    sudo systemctl start portfolio-movers-us.service     # 포트폴리오 미국 리포트 수동 실행"
+echo "    journalctl -u stock-analyzer.service -f              # 실시간 로그"
 echo ""
-echo "==> $PIPELINE_DIR/.env 에 MONGODB_URI, NAVER_*, MARKETAUX_API_KEY, ANTHROPIC_API_KEY 를 채워 넣었는지 확인하세요."
+echo "==> $PIPELINE_DIR/.env 에 MONGODB_URI, NAVER_*, MARKETAUX_API_KEY, ANTHROPIC_API_KEY,"
+echo "    PORTFOLIO_API_URL, PIPELINE_API_TOKEN 을 채워 넣었는지 확인하세요."
