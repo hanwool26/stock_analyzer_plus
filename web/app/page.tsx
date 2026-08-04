@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getLatestReport } from "@/lib/reports";
-import RecommendationCard from "@/components/RecommendationCard";
+import RecommendationTabs from "@/components/RecommendationTabs";
 import CategoryIssueCard from "@/components/CategoryIssueCard";
 
 export default async function HomePage() {
@@ -16,8 +16,6 @@ export default async function HomePage() {
       </div>
     );
   }
-
-  const kr = report.recommendations.filter((r) => r.region === "KR");
 
   return (
     <div className="space-y-10">
@@ -41,12 +39,8 @@ export default async function HomePage() {
       </section>
 
       <section>
-        <h2 className="text-base font-bold text-slate-900 mb-3">추천 종목 TOP 5 (국내)</h2>
-        <div className="grid gap-4 sm:grid-cols-2">
-          {kr.map((rec) => (
-            <RecommendationCard key={`${rec.region}-${rec.ticker}`} rec={rec} />
-          ))}
-        </div>
+        <h2 className="text-base font-bold text-slate-900 mb-3">추천 종목 TOP 5</h2>
+        <RecommendationTabs recommendations={report.recommendations} />
       </section>
 
       <section>

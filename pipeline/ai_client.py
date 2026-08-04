@@ -71,7 +71,8 @@ def _call_via_cli(prompt: str) -> str:
         raise ClaudeCallError(f"Claude CLI 호출이 {config.CLAUDE_TIMEOUT_SECONDS}초를 초과했습니다.") from exc
 
     if result.returncode != 0:
-        raise ClaudeCallError(f"Claude CLI 호출 실패 (exit {result.returncode}): {result.stderr.strip()}")
+        detail = result.stderr.strip() or result.stdout.strip() or "(stdout/stderr 모두 비어 있음)"
+        raise ClaudeCallError(f"Claude CLI 호출 실패 (exit {result.returncode}): {detail}")
 
     return result.stdout.strip()
 
