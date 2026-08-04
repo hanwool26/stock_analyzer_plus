@@ -7,13 +7,14 @@ import { formatCurrency, formatKrw, formatSignedPct } from "@/lib/format";
 import ConfirmDeleteButton from "./ConfirmDeleteButton";
 
 type HoldingRow = Holding & { valueKrw: number; costKrw: number; returnPct: number; isLive: boolean; livePrice: number | null };
-type SortKey = "name" | "quantity" | "avgPrice" | "valueKrw" | "returnPct";
+type SortKey = "name" | "quantity" | "avgPrice" | "valueKrw" | "weightPct" | "returnPct";
 
 const COLUMNS: { key: SortKey; label: string; align: "left" | "right"; defaultDir: "asc" | "desc" }[] = [
   { key: "name", label: "종목", align: "left", defaultDir: "asc" },
   { key: "quantity", label: "수량", align: "right", defaultDir: "desc" },
   { key: "avgPrice", label: "시세/평단가", align: "right", defaultDir: "desc" },
   { key: "valueKrw", label: "매입/평가금액", align: "right", defaultDir: "desc" },
+  { key: "weightPct", label: "비중", align: "right", defaultDir: "desc" },
   { key: "returnPct", label: "수익률", align: "right", defaultDir: "desc" },
 ];
 
@@ -106,9 +107,17 @@ export default function HoldingsTable({ holdings }: { holdings: HoldingRow[] }) 
     }
   }
 
+  const withWeight = useMemo(() => {
+    const totalValueKrw = holdings.reduce((sum, h) => sum + h.valueKrw, 0);
+    return holdings.map((h) => ({
+      ...h,
+      weightPct: totalValueKrw > 0 ? (h.valueKrw / totalValueKrw) * 100 : 0,
+    }));
+  }, [holdings]);
+
   const sorted = useMemo(() => {
-    if (!sortKey) return holdings;
-    const copy = [...holdings];
+    if (!sortKey) return withWeight;
+    const copy = [...withWeight];
     copy.sort((a, b) => {
       const av = a[sortKey];
       const bv = b[sortKey];
@@ -116,7 +125,7 @@ export default function HoldingsTable({ holdings }: { holdings: HoldingRow[] }) 
       return sortDir === "asc" ? cmp : -cmp;
     });
     return copy;
-  }, [holdings, sortKey, sortDir]);
+  }, [withWeight, sortKey, sortDir]);
 
   if (holdings.length === 0) {
     return (
@@ -174,6 +183,7 @@ export default function HoldingsTable({ holdings }: { holdings: HoldingRow[] }) 
                   <div className="text-[11px] font-normal text-slate-400">{formatKrw(h.costKrw)}</div>
                   <div>{formatKrw(h.valueKrw)}</div>
                 </td>
+                <td className="px-4 py-3 text-right tabular-nums text-slate-600">{h.weightPct.toFixed(1)}%</td>
                 <td
                   className={`px-4 py-3 text-right tabular-nums font-semibold ${
                     h.returnPct > 0 ? "text-red-600" : h.returnPct < 0 ? "text-blue-600" : "text-slate-500"
