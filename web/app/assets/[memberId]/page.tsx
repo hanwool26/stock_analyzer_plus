@@ -5,6 +5,7 @@ import AssetsSubNav from "@/components/AssetsSubNav";
 import SnapshotFormDialog from "@/components/SnapshotFormDialog";
 import MemberSnapshotSection from "@/components/MemberSnapshotSection";
 import ConfirmDeleteButton from "@/components/ConfirmDeleteButton";
+import BlurGate from "@/components/BlurGate";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,7 @@ export default async function MemberAssetsPage({
   );
 
   return (
+    <BlurGate>
     <div>
       <div className="mb-1">
         <h1 className="text-xl font-bold text-slate-900">가계자산</h1>
@@ -83,5 +85,6 @@ export default async function MemberAssetsPage({
         liabilityCategories={liabilityCategories}
       />
     </div>
+    </BlurGate>
   );
 }

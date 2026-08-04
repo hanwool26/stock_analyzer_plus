@@ -3,6 +3,7 @@ import { getApiKeyStatus } from "@/lib/settings";
 import CoachingConversationList from "@/components/CoachingConversationList";
 import NewConversationForm from "@/components/NewConversationForm";
 import ApiKeySettingsDialog from "@/components/ApiKeySettingsDialog";
+import BlurGate from "@/components/BlurGate";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,7 @@ export default async function CoachingPage() {
   ]);
 
   return (
+    <BlurGate>
     <div>
       <div className="mb-1 flex flex-wrap items-start justify-between gap-4">
         <div>
@@ -44,5 +46,6 @@ export default async function CoachingPage() {
         </div>
       </div>
     </div>
+    </BlurGate>
   );
 }

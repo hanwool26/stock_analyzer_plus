@@ -5,6 +5,7 @@ import { formatKrw } from "@/lib/format";
 import { formatDateOnlyISO, formatDateOnlyKorean } from "@/lib/date";
 import AssetsSubNav from "@/components/AssetsSubNav";
 import HouseholdTrendChart, { type HouseholdTrendPoint } from "@/components/HouseholdTrendChart";
+import BlurGate from "@/components/BlurGate";
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +55,7 @@ export default async function AssetsSummaryPage() {
   });
 
   return (
+    <BlurGate>
     <div>
       <div className="mb-1">
         <h1 className="text-xl font-bold text-slate-900">가계자산</h1>
@@ -111,5 +113,6 @@ export default async function AssetsSummaryPage() {
         </div>
       </section>
     </div>
+    </BlurGate>
   );
 }

@@ -4,6 +4,7 @@ import HoldingFormDialog from "@/components/HoldingFormDialog";
 import ImportHoldingsDialog from "@/components/ImportHoldingsDialog";
 import HoldingsTable from "@/components/HoldingsTable";
 import CategoryPieChart from "@/components/CategoryPieChart";
+import BlurGate from "@/components/BlurGate";
 import { formatKrw } from "@/lib/format";
 import { formatDateTimeKorean } from "@/lib/date";
 import { getLiveHoldingValuations } from "@/lib/portfolio-valuation";
@@ -33,6 +34,7 @@ export default async function PortfolioPage() {
     .filter((g) => g.items.length > 0);
 
   return (
+    <BlurGate>
     <div className="space-y-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -73,5 +75,6 @@ export default async function PortfolioPage() {
         <HoldingsTable holdings={rows} />
       </section>
     </div>
+    </BlurGate>
   );
 }

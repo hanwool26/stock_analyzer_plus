@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import PinLockControl from "./PinLockControl";
 
 const NAV_ITEMS = [
   { href: "/", label: "Home" },
@@ -17,9 +18,12 @@ export default function Nav() {
   return (
     <header className="border-b border-slate-200 bg-white/80 backdrop-blur sticky top-0 z-10">
       <div className="mx-auto max-w-5xl px-4 sm:px-6 pt-1.5 pb-2">
-        <Link href="/" className="block shrink-0 whitespace-nowrap text-[11px] font-semibold text-slate-400 tracking-tight hover:text-slate-600 transition-colors">
-          Family Asset <span className="text-blue-500">Manager</span>
-        </Link>
+        <div className="flex items-center justify-between gap-2">
+          <Link href="/" className="block shrink-0 whitespace-nowrap text-[11px] font-semibold text-slate-400 tracking-tight hover:text-slate-600 transition-colors">
+            Family Asset <span className="text-blue-500">Manager</span>
+          </Link>
+          <PinLockControl />
+        </div>
         <nav className="flex gap-4 sm:gap-6 text-sm font-medium overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden mt-1">
           {NAV_ITEMS.map((item) => {
             const active =
