@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getReport } from "@/lib/reports";
-import RecommendationCard from "@/components/RecommendationCard";
+import RecommendationTabs from "@/components/RecommendationTabs";
 import CategoryIssueCard from "@/components/CategoryIssueCard";
 
 // MongoDB에서 매번 최신 리포트를 읽어야 하므로 정적 프리렌더링을 막는다.
@@ -18,9 +18,6 @@ export default async function ReportDetailPage({
     notFound();
   }
 
-  const kr = report.recommendations.filter((r) => r.region === "KR");
-  const us = report.recommendations.filter((r) => r.region === "US");
-
   return (
     <div className="space-y-10">
       <section>
@@ -33,21 +30,8 @@ export default async function ReportDetailPage({
       </section>
 
       <section>
-        <h2 className="text-base font-bold text-slate-900 mb-3">국내 추천 TOP 5</h2>
-        <div className="grid gap-4 sm:grid-cols-2">
-          {kr.map((rec) => (
-            <RecommendationCard key={`${rec.region}-${rec.ticker}`} rec={rec} />
-          ))}
-        </div>
-      </section>
-
-      <section>
-        <h2 className="text-base font-bold text-slate-900 mb-3">해외 추천 TOP 5</h2>
-        <div className="grid gap-4 sm:grid-cols-2">
-          {us.map((rec) => (
-            <RecommendationCard key={`${rec.region}-${rec.ticker}`} rec={rec} />
-          ))}
-        </div>
+        <h2 className="text-base font-bold text-slate-900 mb-3">추천 종목 TOP 5</h2>
+        <RecommendationTabs recommendations={report.recommendations} />
       </section>
 
       <section>

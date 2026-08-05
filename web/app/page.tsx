@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { getLatestReport } from "@/lib/reports";
 import RecommendationTabs from "@/components/RecommendationTabs";
 import CategoryIssueCard from "@/components/CategoryIssueCard";
@@ -24,15 +23,7 @@ export default async function HomePage() {
   return (
     <div className="space-y-10">
       <section>
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-          <h1 className="text-xl font-bold text-slate-900">오늘의 시장 분석</h1>
-          <Link
-            href={`/reports/${report.date}/${report.hour}`}
-            className="text-sm font-medium text-blue-600 hover:underline"
-          >
-            상세 리포트 &rarr;
-          </Link>
-        </div>
+        <h1 className="text-xl font-bold text-slate-900 mb-2">오늘의 시장 분석</h1>
         <p className="text-xs text-slate-400 mb-3">
           기준 시점 {report.date} {String(report.hour).padStart(2, "0")}:00 KST
           &middot; 매일 07:00 / 12:00 / 19:00 (평일) 자동 갱신
