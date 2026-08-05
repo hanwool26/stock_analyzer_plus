@@ -4,6 +4,9 @@ import { listPortfolioMoversReports } from "@/lib/portfolio-movers-reports";
 
 const MARKET_LABEL: Record<string, string> = { KR: "국내", US: "미국" };
 
+// MongoDB에서 매번 최신 리포트를 읽어야 하므로 정적 프리렌더링을 막는다.
+export const dynamic = "force-dynamic";
+
 export default async function ReportsPage() {
   const [reports, moversReports] = await Promise.all([listReports(), listPortfolioMoversReports()]);
 

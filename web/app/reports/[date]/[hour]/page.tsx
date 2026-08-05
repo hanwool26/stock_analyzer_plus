@@ -3,6 +3,9 @@ import { getReport } from "@/lib/reports";
 import RecommendationCard from "@/components/RecommendationCard";
 import CategoryIssueCard from "@/components/CategoryIssueCard";
 
+// MongoDB에서 매번 최신 리포트를 읽어야 하므로 정적 프리렌더링을 막는다.
+export const dynamic = "force-dynamic";
+
 export default async function ReportDetailPage({
   params,
 }: {

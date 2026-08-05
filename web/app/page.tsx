@@ -3,6 +3,10 @@ import { getLatestReport } from "@/lib/reports";
 import RecommendationTabs from "@/components/RecommendationTabs";
 import CategoryIssueCard from "@/components/CategoryIssueCard";
 
+// MongoDB에서 매번 최신 리포트를 읽어야 하므로 정적 프리렌더링을 막는다.
+// (누락 시 배포 시점 스냅샷으로 캐시되어 파이프라인이 새 리포트를 써도 반영되지 않음)
+export const dynamic = "force-dynamic";
+
 export default async function HomePage() {
   const report = await getLatestReport();
 

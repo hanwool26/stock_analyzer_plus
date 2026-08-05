@@ -6,6 +6,9 @@ import type { PortfolioMover, Region } from "@/lib/types";
 
 const MARKET_LABEL: Record<string, string> = { KR: "국내", US: "미국" };
 
+// MongoDB에서 매번 최신 리포트를 읽어야 하므로 정적 프리렌더링을 막는다.
+export const dynamic = "force-dynamic";
+
 function MoverCard({ mover }: { mover: PortfolioMover }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
