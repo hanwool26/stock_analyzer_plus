@@ -19,6 +19,8 @@ import sys
 from datetime import date, datetime, timezone
 from typing import Any
 
+import requests
+
 import ai_client
 import config
 import portfolio_client
@@ -59,7 +61,13 @@ def _search_news(market: str, ticker: str, name: str) -> list[dict[str, Any]]:
     if market == "KR":
         articles = naver_news._search_keyword(name)
     else:
-        articles = marketaux_news._search_symbol_group([ticker])
+        try:
+            articles = marketaux_news._search_symbol_group([ticker])
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError, requests.exceptions.HTTPError) as exc:
+            # marketaux 재시도 후에도 실패하면 이 종목만 건너뛰고 나머지 종목/리포트는 계속 진행한다
+            # (marketaux_news.collect()의 그룹별 격리 처리와 동일한 정책).
+            log.error("marketaux 뉴스 조회 실패 — 건너뜁니다: %s(%s): %s", name, ticker, exc)
+            articles = []
     return articles[: config.PORTFOLIO_NEWS_ARTICLES_PER_STOCK]
 
 

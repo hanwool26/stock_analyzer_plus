@@ -52,19 +52,16 @@ export interface QuoteDetail {
 export async function fetchKrQuoteDetailed(ticker: string): Promise<QuoteDetail | null> {
   const json = await fetchJson(`https://polling.finance.naver.com/api/realtime/domestic/stock/${ticker}`);
   const data = (
-    json as {
-      datas?: { closePrice?: string; fluctuationsRatio?: string; compareToPreviousPrice?: { code?: string } }[];
-    } | null
+    json as { datas?: { closePrice?: string; fluctuationsRatio?: string }[] } | null
   )?.datas?.[0];
   if (!data?.closePrice || !data.fluctuationsRatio) return null;
 
   const price = Number(data.closePrice.replace(/,/g, ""));
-  const ratio = Math.abs(Number(data.fluctuationsRatio));
-  if (!Number.isFinite(price) || !Number.isFinite(ratio)) return null;
+  // fluctuationsRatio는 이미 부호가 포함된 값이다(예: "-6.30" 하락, "2.15" 상승).
+  const changePct = Number(data.fluctuationsRatio);
+  if (!Number.isFinite(price) || !Number.isFinite(changePct)) return null;
 
-  // compareToPreviousPrice.code: "2" = 상승(RISING), "1" = 하락(FALLING), 그 외(예: "3" 보합) = 0
-  const sign = data.compareToPreviousPrice?.code === "2" ? 1 : data.compareToPreviousPrice?.code === "1" ? -1 : 0;
-  return { price, changePct: ratio * sign };
+  return { price, changePct };
 }
 
 /** 해외 종목 현재가 + 전일 대비 등락률 조회 (Yahoo Finance 차트 API). */
