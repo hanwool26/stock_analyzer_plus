@@ -5,6 +5,7 @@ import { formatKrw } from "@/lib/format";
 import { formatDateOnlyISO, formatDateOnlyKorean } from "@/lib/date";
 import AssetsSubNav from "@/components/AssetsSubNav";
 import HouseholdTrendChart, { type HouseholdTrendPoint } from "@/components/HouseholdTrendChart";
+import HouseholdItemSelector from "@/components/HouseholdItemSelector";
 import BlurGate from "@/components/BlurGate";
 
 export const dynamic = "force-dynamic";
@@ -20,8 +21,15 @@ export default async function AssetsSummaryPage() {
   const rows = members.map((m) => {
     const latest = m.snapshots[m.snapshots.length - 1];
     const totals = latest ? computeTotals(latest.items) : { assetTotal: 0, liabilityTotal: 0, netWorth: 0 };
-    return { member: m, latestDate: latest?.date ?? null, ...totals };
+    return { member: m, latestDate: latest?.date ?? null, latestItems: latest?.items ?? [], ...totals };
   });
+
+  const memberItemData = rows.map((r) => ({
+    memberId: r.member.id,
+    memberName: r.member.name,
+    latestDateLabel: r.latestDate ? formatDateOnlyKorean(r.latestDate) : null,
+    items: r.latestItems,
+  }));
 
   const grandTotal = rows.reduce(
     (acc, r) => ({
@@ -67,6 +75,16 @@ export default async function AssetsSummaryPage() {
       <section className="mb-8">
         <h2 className="text-base font-bold text-slate-900 mb-3">가구 합계 추이</h2>
         <HouseholdTrendChart data={householdTrend} />
+      </section>
+
+      <section className="mb-8">
+        <div className="mb-3">
+          <h2 className="text-base font-bold text-slate-900">항목 선택 합계</h2>
+          <p className="text-xs text-slate-400 mt-0.5">
+            구성원들의 최신 스냅샷 항목을 클릭해 선택하면(음영 표시) 선택한 항목들의 합계를 확인할 수 있습니다. 다시 클릭하면 선택이 해제됩니다.
+          </p>
+        </div>
+        <HouseholdItemSelector members={memberItemData} />
       </section>
 
       <section>
