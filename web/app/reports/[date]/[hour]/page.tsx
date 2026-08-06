@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getReport } from "@/lib/reports";
+import { formatReportTime } from "@/lib/format";
 import RecommendationTabs from "@/components/RecommendationTabs";
 import CategoryIssueCard from "@/components/CategoryIssueCard";
 
@@ -22,7 +23,7 @@ export default async function ReportDetailPage({
     <div className="space-y-10">
       <section>
         <h1 className="text-xl font-bold text-slate-900 mb-1">
-          {report.date} {String(report.hour).padStart(2, "0")}:00 리포트
+          {report.date} {formatReportTime(report.hour, report.minute)} 리포트
         </h1>
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm mt-3">
           <p className="text-sm text-slate-700 leading-relaxed">{report.marketContext}</p>

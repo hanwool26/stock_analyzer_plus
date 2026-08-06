@@ -2,8 +2,8 @@
 """파이프라인 오케스트레이터. methodology.html 의 7+1단계를 순서대로 실행한다.
 
 사용법:
-  python run_pipeline.py                      # 오늘 날짜, 현재 시각과 가장 가까운 07/12/19시 슬롯
-  python run_pipeline.py --date 2026-08-04 --hour 12
+  python run_pipeline.py                      # 오늘 날짜, 현재 시각과 가장 가까운 07:30/19:30 슬롯
+  python run_pipeline.py --date 2026-08-04 --hour 19
   python run_pipeline.py --dry-run            # Mongo에 쓰지 않고 pipeline/data/ 에만 JSON 저장
 """
 from __future__ import annotations
@@ -32,9 +32,20 @@ logging.basicConfig(
 log = logging.getLogger("pipeline")
 
 
+# 리포트 생성 슬롯: 아침 07:30 / 저녁 19:30 (KST) 하루 2회.
+REPORT_SLOTS: list[tuple[int, int]] = [(7, 30), (19, 30)]
+_SLOT_MINUTE_BY_HOUR = dict(REPORT_SLOTS)
+
+
 def _nearest_hour_slot(now: datetime) -> int:
-    slots = [7, 12, 19]
-    return min(slots, key=lambda h: abs(now.hour - h))
+    now_minutes = now.hour * 60 + now.minute
+    hour, _minute = min(REPORT_SLOTS, key=lambda s: abs(s[0] * 60 + s[1] - now_minutes))
+    return hour
+
+
+def _minute_for_hour(hour: int) -> int:
+    """--hour 로 수동 지정된 슬롯이 아닌 값이 들어와도(backfill 등) 30분으로 취급한다."""
+    return _SLOT_MINUTE_BY_HOUR.get(hour, 30)
 
 
 def _cleanup_old_data() -> None:
@@ -65,8 +76,9 @@ def _save_local(target_dir, filename: str, data) -> None:
 
 
 def run(target_date: date, hour: int, dry_run: bool) -> None:
-    run_dir = config.PIPELINE_DATA_DIR / target_date.isoformat() / f"{hour:02d}"
-    log.info("=== 파이프라인 시작: %s %02d:00 (AI_BACKEND=%s) ===", target_date, hour, config.AI_BACKEND)
+    minute = _minute_for_hour(hour)
+    run_dir = config.PIPELINE_DATA_DIR / target_date.isoformat() / f"{hour:02d}{minute:02d}"
+    log.info("=== 파이프라인 시작: %s %02d:%02d (AI_BACKEND=%s) ===", target_date, hour, minute, config.AI_BACKEND)
 
     universe = _load_universe()
     universe_by_ticker = {u["ticker"]: u for u in universe}
@@ -115,6 +127,7 @@ def run(target_date: date, hour: int, dry_run: bool) -> None:
     report = {
         "date": target_date.isoformat(),
         "hour": hour,
+        "minute": minute,
         "marketContext": market_context,
         "recommendations": recommendations,
         "categorySummaries": category_summaries,
@@ -127,7 +140,7 @@ def run(target_date: date, hour: int, dry_run: bool) -> None:
         log.info("  --dry-run: MongoDB 저장을 건너뜁니다. 로컬 산출물: %s", run_dir)
     else:
         mongo_writer.save_report(report)
-        log.info("  MongoDB reports 컬렉션에 저장 완료 (%s %02d:00)", report["date"], report["hour"])
+        log.info("  MongoDB reports 컬렉션에 저장 완료 (%s %02d:%02d)", report["date"], report["hour"], report["minute"])
 
     log.info("=== 파이프라인 완료 (claude 총 호출 %d회) ===", ai_client.calls_used())
 
@@ -135,7 +148,7 @@ def run(target_date: date, hour: int, dry_run: bool) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Stock Analyzer 리포트 파이프라인")
     parser.add_argument("--date", type=str, default=None, help="YYYY-MM-DD (기본값: 오늘)")
-    parser.add_argument("--hour", type=int, default=None, choices=[7, 12, 19], help="기본값: 현재 시각과 가장 가까운 슬롯")
+    parser.add_argument("--hour", type=int, default=None, choices=[7, 19], help="기본값: 현재 시각과 가장 가까운 슬롯")
     parser.add_argument("--dry-run", action="store_true", help="MongoDB에 쓰지 않고 로컬 JSON만 생성")
     args = parser.parse_args()
 

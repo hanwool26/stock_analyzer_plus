@@ -2,10 +2,14 @@
 
 원본은 git push 로 정적 파일을 배포했지만, 이 구현은 MongoDB Atlas 의 `reports` 컬렉션에
 직접 upsert 한다 — Vercel의 web/lib/reports.ts 가 같은 컬렉션을 읽으므로 재배포 없이 즉시 반영된다.
-365일 보관 정책은 Postgres DELETE 대신 Mongo TTL 인덱스로 구현한다.
+
+DB 용량이 제한적이므로 최신 5일치만 보관한다. expiresAt(TTL 인덱스)은 만일을 대비한
+백스톱일 뿐이고, 실제 보관 개수는 매 저장 후 _prune_old_dates 가 날짜 기준 최신 5개만
+남기고 나머지를 즉시 delete_many 로 지워서 강제한다 (TTL은 지연 삭제라 즉시 반영되지 않음).
 """
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -14,7 +18,12 @@ from pymongo.collection import Collection
 
 import config
 
-_RETENTION_DAYS = 365
+log = logging.getLogger("pipeline.mongo_writer")
+
+# 리포트 히스토리로 실제 보관할 날짜 수 (하루 최대 2회: 07:30/19:30).
+_KEEP_DATES = 5
+# TTL 백스톱 — _prune_old_dates 가 정상 동작하는 한 이 값에 도달하기 전에 지워진다.
+_RETENTION_DAYS = 30
 
 
 def _get_collection() -> Collection:
@@ -28,6 +37,17 @@ def _get_collection() -> Collection:
 def ensure_indexes(collection: Collection) -> None:
     collection.create_index([("date", ASCENDING), ("hour", ASCENDING)], unique=True, name="date_hour_unique")
     collection.create_index("expiresAt", expireAfterSeconds=0, name="ttl_expires_at")
+
+
+def _prune_old_dates(collection: Collection, keep_dates: int = _KEEP_DATES) -> None:
+    """가장 최근 keep_dates개의 날짜만 남기고 그 이전 날짜의 문서는 모두 삭제한다."""
+    dates = sorted(collection.distinct("date"), reverse=True)
+    stale_dates = dates[keep_dates:]
+    if not stale_dates:
+        return
+    result = collection.delete_many({"date": {"$in": stale_dates}})
+    if result.deleted_count:
+        log.info("오래된 리포트 삭제: %d건 (날짜 %d개 정리)", result.deleted_count, len(stale_dates))
 
 
 def save_report(report: dict[str, Any]) -> None:
@@ -47,3 +67,5 @@ def save_report(report: dict[str, Any]) -> None:
         {"$set": doc},
         upsert=True,
     )
+
+    _prune_old_dates(collection)

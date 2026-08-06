@@ -1,7 +1,7 @@
 # Stock Analyzer 리포트 파이프라인 (라즈베리파이용)
 
 `logic_strategy/methodology.html` 에 정의된 7+1단계 파이프라인의 실제 구현입니다.
-라즈베리파이에서 평일 07:00 / 12:00 / 19:00(KST)에 자동 실행되어, 결과를 MongoDB Atlas
+라즈베리파이에서 평일 07:30 / 19:30(KST)에 자동 실행되어, 결과를 MongoDB Atlas
 `reports` 컬렉션에 저장합니다. `web/` 의 Next.js 앱(Vercel 배포)이 같은 컬렉션을 읽으므로
 재배포 없이 즉시 화면에 반영됩니다.
 
@@ -110,7 +110,7 @@ MongoDB Atlas 웹 UI(Collections)에서 `stock_analyzer.reports` 컬렉션에 �
 ```bash
 python -m venv venv && source venv/bin/activate   # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-python run_pipeline.py --dry-run --date 2026-08-04 --hour 12
+python run_pipeline.py --dry-run --date 2026-08-04 --hour 19
 ```
 
 `--dry-run`은 MongoDB에 쓰지 않고 `pipeline/data/<date>/<hour>/*.json`에만 중간/최종 산출물을 남깁니다.

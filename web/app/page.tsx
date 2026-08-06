@@ -1,4 +1,5 @@
 import { getLatestReport } from "@/lib/reports";
+import { formatReportTime } from "@/lib/format";
 import RecommendationTabs from "@/components/RecommendationTabs";
 import CategoryIssueCard from "@/components/CategoryIssueCard";
 
@@ -25,8 +26,8 @@ export default async function HomePage() {
       <section>
         <h1 className="text-xl font-bold text-slate-900 mb-2">오늘의 시장 분석</h1>
         <p className="text-xs text-slate-400 mb-3">
-          기준 시점 {report.date} {String(report.hour).padStart(2, "0")}:00 KST
-          &middot; 매일 07:00 / 12:00 / 19:00 (평일) 자동 갱신
+          기준 시점 {report.date} {formatReportTime(report.hour, report.minute)} KST
+          &middot; 매일 07:30 / 19:30 (평일) 자동 갱신
         </p>
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <p className="text-sm text-slate-700 leading-relaxed">{report.marketContext}</p>

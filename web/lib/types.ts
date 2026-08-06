@@ -58,7 +58,8 @@ export interface CategorySummary {
 
 export interface Report {
   date: string; // "YYYY-MM-DD"
-  hour: number; // 7 | 12 | 19
+  hour: number; // 7 | 19
+  minute?: number; // 30 (과거 07:00/12:00/19:00 문서엔 없음 → 0 취급)
   marketContext: string;
   recommendations: Recommendation[]; // KR 5 + US 5
   categorySummaries: CategorySummary[];

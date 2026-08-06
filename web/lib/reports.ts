@@ -4,10 +4,11 @@ import * as mock from "./mock-reports";
 
 // Mongo 문서 → Report 타입으로 변환 (_id, createdAt, expiresAt 등 저장용 메타 필드 제거)
 function toReport(doc: Record<string, unknown>): Report {
-  const { date, hour, marketContext, recommendations, categorySummaries } = doc;
+  const { date, hour, minute, marketContext, recommendations, categorySummaries } = doc;
   return {
     date,
     hour,
+    minute,
     marketContext,
     recommendations,
     categorySummaries,
