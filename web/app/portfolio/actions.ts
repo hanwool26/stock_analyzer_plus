@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { randomUUID } from "node:crypto";
 import * as XLSX from "xlsx";
 import iconv from "iconv-lite";
 import { prisma } from "@/lib/db";
@@ -16,7 +17,7 @@ type ParsedHolding = {
   currentValue: number;
 };
 
-export async function addHolding(formData: FormData) {
+export async function addHolding(formData: FormData): Promise<{ error?: string }> {
   const ticker = String(formData.get("ticker") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
   const region = String(formData.get("region") ?? "KR");
@@ -25,7 +26,7 @@ export async function addHolding(formData: FormData) {
   const price = Number(formData.get("price"));
 
   if (!ticker || !name || !Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(price) || price <= 0) {
-    throw new Error("입력값을 확인해주세요.");
+    return { error: "입력값을 확인해주세요." };
   }
 
   await prisma.holding.create({
@@ -49,16 +50,17 @@ export async function addHolding(formData: FormData) {
   });
 
   revalidatePath("/portfolio");
+  return {};
 }
 
-export async function addTransaction(formData: FormData) {
+export async function addTransaction(formData: FormData): Promise<{ error?: string }> {
   const holdingId = String(formData.get("holdingId") ?? "");
   const type = String(formData.get("type") ?? "BUY") as "BUY" | "SELL";
   const quantity = Number(formData.get("quantity"));
   const price = Number(formData.get("price"));
 
   if (!holdingId || !Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(price) || price <= 0) {
-    throw new Error("입력값을 확인해주세요.");
+    return { error: "입력값을 확인해주세요." };
   }
 
   const holding = await prisma.holding.findUniqueOrThrow({ where: { id: holdingId } });
@@ -88,6 +90,7 @@ export async function addTransaction(formData: FormData) {
   ]);
 
   revalidatePath("/portfolio");
+  return {};
 }
 
 export async function deleteHolding(holdingId: string) {
@@ -125,7 +128,7 @@ function parseNumber(value: unknown): number {
   return Number(String(value ?? "").replace(/,/g, ""));
 }
 
-// 국내주식 잔고 CSV: 종목명/보유수량/매입가(주당 평균단가)/평가금액이 종목당 1행.
+// 국내주식 잔고 CSV: 종목명/잔고수량/매입가(주당 평균단가)/평가금액이 종목당 1행.
 function parseKoreanStocksRows(rows: unknown[][]): { parsed: ParsedHolding[]; errors: string[] } {
   if (rows.length < 2) {
     return { parsed: [], errors: ["국내주식 CSV: 가져올 데이터가 없습니다."] };
@@ -133,12 +136,12 @@ function parseKoreanStocksRows(rows: unknown[][]): { parsed: ParsedHolding[]; er
 
   const header = rows[0].map((h) => String(h).trim());
   const nameIdx = header.indexOf("종목명");
-  const qtyIdx = header.indexOf("보유수량");
+  const qtyIdx = header.indexOf("잔고수량");
   const avgPriceIdx = header.indexOf("매입가");
   const valueIdx = header.indexOf("평가금액");
 
   if ([nameIdx, qtyIdx, avgPriceIdx, valueIdx].includes(-1)) {
-    return { parsed: [], errors: ["국내주식 CSV 형식을 확인해주세요. (종목명/보유수량/매입가/평가금액 컬럼이 필요합니다.)"] };
+    return { parsed: [], errors: ["국내주식 CSV 형식을 확인해주세요. (종목명/잔고수량/매입가/평가금액 컬럼이 필요합니다.)"] };
   }
 
   const parsed: ParsedHolding[] = [];
@@ -154,7 +157,7 @@ function parseKoreanStocksRows(rows: unknown[][]): { parsed: ParsedHolding[]; er
     const currentValue = parseNumber(row[valueIdx]);
 
     if (!Number.isFinite(quantity) || quantity <= 0) {
-      errors.push(`국내주식 CSV ${rowNum}행 (${name}): 보유수량이 올바르지 않습니다.`);
+      errors.push(`국내주식 CSV ${rowNum}행 (${name}): 잔고수량이 올바르지 않습니다.`);
       return;
     }
     if (!Number.isFinite(avgPrice) || avgPrice <= 0) {
@@ -206,8 +209,9 @@ function parseGlobalStocksRows(rows: unknown[][]): { parsed: ParsedHolding[]; er
     }
 
     const name = String(nameRow[2] ?? "").trim();
+    // 보유수량(코드행)이 총 보유 수량이다. 매도가능(이름행)은 대출(대여) 등으로 묶인 수량을
+    // 제외한 값이라 보유수량보다 작을 수 있으므로 두 값을 동일하게 강제하지 않는다.
     const quantity = parseNumber(codeRow[3]);
-    const nameRowQuantity = parseNumber(nameRow[3]);
     const avgPrice = parseNumber(nameRow[4]);
     const currentValue = parseNumber(codeRow[6]);
 
@@ -215,7 +219,7 @@ function parseGlobalStocksRows(rows: unknown[][]): { parsed: ParsedHolding[]; er
       errors.push(`해외주식 CSV ${rowNum}행 (${ticker}): 종목명이 비어 있습니다.`);
       continue;
     }
-    if (!Number.isFinite(quantity) || quantity <= 0 || quantity !== nameRowQuantity) {
+    if (!Number.isFinite(quantity) || quantity <= 0) {
       errors.push(`해외주식 CSV ${rowNum}행 (${name}): 보유수량이 올바르지 않습니다.`);
       continue;
     }
@@ -236,14 +240,14 @@ function parseGlobalStocksRows(rows: unknown[][]): { parsed: ParsedHolding[]; er
 
 // 국내/해외 잔고 CSV를 각각 파싱해 해당 지역(region)의 기존 보유 종목만 교체한다.
 // 두 CSV 모두 평균단가(현지통화)를 직접 제공하므로 환율 가정 없이 정확한 값을 저장할 수 있다.
-export async function importHoldings(formData: FormData) {
+export async function importHoldings(formData: FormData): Promise<{ error?: string }> {
   const krFile = formData.get("krFile");
   const usFile = formData.get("usFile");
   const hasKrFile = krFile instanceof File && krFile.size > 0;
   const hasUsFile = usFile instanceof File && usFile.size > 0;
 
   if (!hasKrFile && !hasUsFile) {
-    throw new Error("국내주식 또는 해외주식 CSV 파일을 하나 이상 선택해주세요.");
+    return { error: "국내주식 또는 해외주식 CSV 파일을 하나 이상 선택해주세요." };
   }
 
   const errors: string[] = [];
@@ -262,45 +266,49 @@ export async function importHoldings(formData: FormData) {
   }
 
   if (errors.length > 0) {
-    throw new Error(errors.join("\n"));
+    return { error: errors.join("\n") };
   }
   if (krRows.length === 0 && usRows.length === 0) {
-    throw new Error("가져올 데이터가 없습니다.");
+    return { error: "가져올 데이터가 없습니다." };
   }
 
+  // 종목마다 holding.create()를 개별 쿼리로 날리면(중첩 transaction 포함 시 종목당 2쿼리) 종목 수가
+  // 늘어날수록 왕복 횟수가 선형으로 늘어나, 원격 DB 지연과 겹쳐 상호작용 트랜잭션의 기본 타임아웃(5초)을
+  // 넘기기 쉽다(P2028). id를 미리 생성해 createMany로 한 번에 묶어 쿼리 수를 상수로 고정한다.
   const now = new Date();
-  function createHoldingOps(rows: ParsedHolding[]) {
-    return rows.map((r) =>
-      prisma.holding.create({
-        data: {
-          ticker: r.ticker,
-          name: r.name,
-          region: r.region,
-          currency: r.currency,
-          quantity: r.quantity,
-          avgPrice: r.avgPrice,
-          currentValue: r.currentValue,
-          transactions: {
-            create: {
-              type: "BUY",
-              quantity: r.quantity,
-              price: r.avgPrice,
-              executedAt: now,
-            },
-          },
-        },
-      })
-    );
-  }
+  const allRows = [...krRows, ...usRows];
+  const holdingsData = allRows.map((r) => ({
+    id: randomUUID(),
+    ticker: r.ticker,
+    name: r.name,
+    region: r.region,
+    currency: r.currency,
+    quantity: r.quantity,
+    avgPrice: r.avgPrice,
+    currentValue: r.currentValue,
+  }));
+  const transactionsData = holdingsData.map((h, i) => ({
+    id: randomUUID(),
+    holdingId: h.id,
+    type: "BUY",
+    quantity: allRows[i].quantity,
+    price: allRows[i].avgPrice,
+    executedAt: now,
+  }));
 
-  await prisma.$transaction([
-    ...(hasKrFile ? [prisma.holding.deleteMany({ where: { region: "KR" } })] : []),
-    ...(hasUsFile ? [prisma.holding.deleteMany({ where: { region: "US" } })] : []),
-    ...createHoldingOps(krRows),
-    ...createHoldingOps(usRows),
-  ]);
+  await prisma.$transaction(
+    [
+      ...(hasKrFile ? [prisma.holding.deleteMany({ where: { region: "KR" } })] : []),
+      ...(hasUsFile ? [prisma.holding.deleteMany({ where: { region: "US" } })] : []),
+      ...(holdingsData.length > 0
+        ? [prisma.holding.createMany({ data: holdingsData }), prisma.transaction.createMany({ data: transactionsData })]
+        : []),
+    ],
+    { timeout: 20000 }
+  );
 
   revalidatePath("/portfolio");
+  return {};
 }
 
 // totalValue/totalCost는 호출부(포트폴리오 페이지)에서 이미 계산한 실시간 평가값을 그대로 받는다.

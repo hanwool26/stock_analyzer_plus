@@ -29,7 +29,11 @@ export default function ImportHoldingsDialog() {
     setError(null);
     startTransition(async () => {
       try {
-        await importHoldings(formData);
+        const result = await importHoldings(formData);
+        if (result?.error) {
+          setError(result.error);
+          return;
+        }
         formRef.current?.reset();
         setOpen(false);
       } catch (e) {

@@ -27,7 +27,11 @@ function TransactionRow({ holding }: { holding: Holding }) {
     setError(null);
     startTransition(async () => {
       try {
-        await addTransaction(formData);
+        const result = await addTransaction(formData);
+        if (result?.error) {
+          setError(result.error);
+          return;
+        }
         setOpen(false);
       } catch (e) {
         setError(e instanceof Error ? e.message : "거래 등록에 실패했습니다.");

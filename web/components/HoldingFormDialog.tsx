@@ -13,7 +13,11 @@ export default function HoldingFormDialog() {
     setError(null);
     startTransition(async () => {
       try {
-        await addHolding(formData);
+        const result = await addHolding(formData);
+        if (result?.error) {
+          setError(result.error);
+          return;
+        }
         formRef.current?.reset();
         setOpen(false);
       } catch (e) {
