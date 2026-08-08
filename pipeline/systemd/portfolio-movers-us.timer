@@ -1,11 +1,13 @@
 [Unit]
-Description=Run portfolio movers (US) pipeline weekdays at 05:00 KST (미국 장마감)
+Description=Run portfolio movers (US) pipeline at 06:00 KST, Tue-Sat (미국 장마감, 한국시간 기준 익일 새벽)
 
 [Timer]
 # systemd >= 239 는 캘린더 표현식 끝에 타임존을 붙일 수 있음. 구버전이면
 # `sudo timedatectl set-timezone Asia/Seoul` 로 시스템 시간대를 맞춘 뒤
 # "Asia/Seoul" 부분을 지우고 사용하세요.
-OnCalendar=Mon..Fri 05:00 Asia/Seoul
+# 미국 거래일(월~금)의 장마감은 한국시간으로 다음날 새벽에 해당하므로
+# 화요일 새벽(월요일치)부터 토요일 새벽(금요일치)까지 실행한다.
+OnCalendar=Tue..Sat 05:10 Asia/Seoul
 Persistent=true
 RandomizedDelaySec=60
 

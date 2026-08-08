@@ -5,7 +5,7 @@ Description=Run portfolio movers (KR) pipeline weekdays at 15:30 KST (국내 장
 # systemd >= 239 는 캘린더 표현식 끝에 타임존을 붙일 수 있음. 구버전이면
 # `sudo timedatectl set-timezone Asia/Seoul` 로 시스템 시간대를 맞춘 뒤
 # "Asia/Seoul" 부분을 지우고 사용하세요.
-OnCalendar=Mon..Fri 15:30 Asia/Seoul
+OnCalendar=Mon..Fri 15:40 Asia/Seoul
 Persistent=true
 RandomizedDelaySec=60
 
